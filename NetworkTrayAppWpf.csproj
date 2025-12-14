@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <RootNamespace>NetworkTrayAppWpf</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Simplified output paths -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+
+    <!-- English only -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- Release build optimizations: Framework-dependent single file -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <SelfContained>false</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishDir>$(OutputPath)</PublishDir>
+        <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <!-- Auto-publish single file on Release build -->
+  <Target Name="PublishAfterBuild" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c Release --no-build" />
+  </Target>
+  <ItemGroup>
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.2.0" />
+    <PackageReference Include="ModernWpfUI" Version="0.9.6" />
+  </ItemGroup>
+</Project>
