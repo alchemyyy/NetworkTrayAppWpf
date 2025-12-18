@@ -1,4 +1,5 @@
 using H.NotifyIcon;
+using Microsoft.Win32;
 using ModernWpf;
 using System.Diagnostics;
 using System.Windows;
@@ -30,6 +31,9 @@ public partial class App
         _themeHelper = new ThemeHelper();
         _iconProvider.IsLightTheme = _themeHelper.IsTaskbarLightTheme;
         _themeHelper.ThemeChanged += OnThemeChanged;
+
+        // Subscribe to display settings changes (DPI, resolution, monitors)
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
         // Enable dark mode for any Win32 elements
         //NativeMethods.EnableDarkModeForApp();
@@ -156,6 +160,46 @@ public partial class App
                     isLightTheme ? ElementTheme.Light : ElementTheme.Dark);
             }
         });
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        // Display settings changed (DPI, resolution, monitors connected/disconnected)
+        // Invalidate cached context menu layout to ensure correct positioning
+        Dispatcher.BeginInvoke(InvalidateContextMenuLayout);
+    }
+
+    private void InvalidateContextMenuLayout()
+    {
+        if (_trayIcon?.ContextMenu == null)
+            return;
+
+        ContextMenu menu = _trayIcon.ContextMenu;
+
+        // Invalidate all cached layout/render data so WPF recalculates with new DPI
+        menu.InvalidateMeasure();
+        menu.InvalidateArrange();
+        menu.InvalidateVisual();
+
+        // Also invalidate all menu items
+        foreach (object item in menu.Items)
+        {
+            if (item is UIElement element)
+            {
+                element.InvalidateMeasure();
+                element.InvalidateArrange();
+                element.InvalidateVisual();
+            }
+        }
+
+        // Clear any cached placement properties that may have stale DPI-dependent values
+        menu.ClearValue(ContextMenu.PlacementProperty);
+        menu.ClearValue(ContextMenu.HorizontalOffsetProperty);
+        menu.ClearValue(ContextMenu.VerticalOffsetProperty);
+
+        // Re-warm the menu with fresh layout calculations
+        // Use a slight delay to ensure display settings have fully propagated
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, PreWarmContextMenu);
     }
 
     private void UpdateTrayIcon()
@@ -304,6 +348,7 @@ public partial class App
     private void ExitApplication()
     {
         _refreshTimer?.Stop();
+        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         _themeHelper?.Dispose();
         _networkMonitor?.Dispose();
         _trayIcon?.Dispose();
