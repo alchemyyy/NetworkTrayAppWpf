@@ -23,7 +23,7 @@ public sealed class TrayIconRenderer(AppSettings settings) : IDisposable
     private static readonly bool IsWindows11 = Environment.OSVersion.Version.Build >= 22000;
 
     // Backdrop opacity for "unfilled" bars effect
-    private const double BackdropOpacity = 0.5;
+    private const double BackdropOpacity = 0.55;
 
     // Glyphs for network states
     private const string GlyphEthernet = "\uE839";
