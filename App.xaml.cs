@@ -48,6 +48,7 @@ public partial class App
         _themeManager = new ThemeManager();
         _iconRenderer.IsLightTheme = _themeManager.IsLightTheme;
         _themeManager.ThemeChanged += OnThemeChanged;
+        UpdateThemeResources(_themeManager.IsLightTheme);
 
         // Subscribe to display settings changes
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
@@ -164,12 +165,41 @@ public partial class App
     {
         Dispatcher.BeginInvoke(() =>
         {
+            UpdateThemeResources(isLightTheme);
             if (_iconRenderer != null)
             {
                 _iconRenderer.IsLightTheme = isLightTheme;
                 UpdateTrayIcon();
             }
         });
+    }
+
+    private void UpdateThemeResources(bool isLightTheme)
+    {
+        Resources["ThemeBackground"] = new SolidColorBrush(isLightTheme
+            ? ThemeManager.LightBackground
+            : ThemeManager.DarkBackground);
+        Resources["ThemeForeground"] = new SolidColorBrush(isLightTheme
+            ? ThemeManager.LightForeground
+            : ThemeManager.DarkForeground);
+        Resources["ThemeBorder"] = new SolidColorBrush(isLightTheme
+            ? ThemeManager.LightBorder
+            : ThemeManager.DarkBorder);
+        Resources["ThemeHover"] = new SolidColorBrush(isLightTheme
+            ? ThemeManager.LightHover
+            : ThemeManager.DarkHover);
+        Resources["ThemePressed"] = new SolidColorBrush(isLightTheme
+            ? ThemeManager.LightPressed
+            : ThemeManager.DarkPressed);
+        Resources["ThemeSeparator"] = new SolidColorBrush(isLightTheme
+            ? ThemeManager.LightSeparator
+            : ThemeManager.DarkSeparator);
+        Resources["ThemeControlBackground"] = new SolidColorBrush(isLightTheme
+            ? ThemeManager.LightControlBackground
+            : ThemeManager.DarkControlBackground);
+        Resources["ThemeControlBorder"] = new SolidColorBrush(isLightTheme
+            ? ThemeManager.LightControlBorder
+            : ThemeManager.DarkControlBorder);
     }
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)

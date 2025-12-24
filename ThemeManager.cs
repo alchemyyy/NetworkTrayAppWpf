@@ -32,11 +32,18 @@ public sealed class ThemeManager : IDisposable
     public static Color DarkSeparator => Color.FromRgb(0x3A, 0x3A, 0x3A);
     public static Color LightSeparator => Color.FromRgb(0xE5, 0xE5, 0xE5);
 
-    public static Color DarkHover => Color.FromRgb(0x3A, 0x3A, 0x3A);
-    public static Color LightHover => Color.FromRgb(0xE8, 0xE8, 0xE8);
+    public static Color DarkHover => Color.FromRgb(0x33, 0x33, 0x33);
+    public static Color LightHover => Color.FromRgb(0xE9, 0xE9, 0xE9);
 
     public static Color DarkPressed => Color.FromRgb(0x2A, 0x2A, 0x2A);
-    public static Color LightPressed => Color.FromRgb(0xD8, 0xD8, 0xD8);
+    public static Color LightPressed => Color.FromRgb(0xDF, 0xDF, 0xDF);
+
+    // Control colors (ComboBox, TextBox, etc.)
+    public static Color DarkControlBackground => Color.FromRgb(0x33, 0x33, 0x33);
+    public static Color LightControlBackground => Colors.White;
+
+    public static Color DarkControlBorder => Color.FromRgb(0x44, 0x44, 0x44);
+    public static Color LightControlBorder => Color.FromRgb(0x80, 0x80, 0x80);
 
     // Acrylic colors (with transparency)
     public static Color DarkAcrylic => Color.FromArgb(0xD0, 0x20, 0x20, 0x20);
@@ -49,6 +56,8 @@ public sealed class ThemeManager : IDisposable
     public Color Hover => IsLightTheme ? LightHover : DarkHover;
     public Color Pressed => IsLightTheme ? LightPressed : DarkPressed;
     public Color Acrylic => IsLightTheme ? LightAcrylic : DarkAcrylic;
+    public Color ControlBackground => IsLightTheme ? LightControlBackground : DarkControlBackground;
+    public Color ControlBorder => IsLightTheme ? LightControlBorder : DarkControlBorder;
 
     public ThemeManager()
     {
