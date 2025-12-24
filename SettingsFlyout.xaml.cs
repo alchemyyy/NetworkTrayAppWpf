@@ -1,50 +1,79 @@
-using Microsoft.Win32;
+using NetworkTrayAppWpf.Interop;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Color = System.Windows.Media.Color;
 
 namespace NetworkTrayAppWpf;
 
-public partial class SettingsWindow : Window
+/// <summary>
+/// Modern flyout-style settings window with acrylic background.
+/// Lightweight replacement for ModernWpfUI-based SettingsWindow.
+/// </summary>
+public partial class SettingsFlyout : Window
 {
-    // Windows 11 style colors
-    private static readonly Color DarkBackground = Color.FromRgb(0x20, 0x20, 0x20);
-    private static readonly Color LightBackground = Color.FromRgb(0xF3, 0xF3, 0xF3);
-
     private readonly AppSettings _settings;
+    private readonly ThemeManager _theme;
     private bool _isInitializing = true;
     private bool _isClosing;
 
-    public SettingsWindow(AppSettings settings)
+    public SettingsFlyout(AppSettings settings, ThemeManager theme)
     {
         _settings = settings;
+        _theme = theme;
+
         InitializeComponent();
 
-        ApplyThemeBackground();
+        ApplyTheme();
         Loaded += OnLoaded;
     }
 
-    private void ApplyThemeBackground()
+    private void Window_SourceInitialized(object sender, EventArgs e)
     {
-        bool isLight = IsSystemLightTheme();
-        SolidColorBrush brush = new(isLight ? LightBackground : DarkBackground);
-        Background = brush;
-        RootBorder.Background = brush;
+        // Apply window styles after handle is created
+        this.ApplyToolWindowStyle();
+        this.EnableRoundedCorners();
+        this.SetDarkMode(!_theme.IsLightTheme);
+
+        // Enable acrylic blur
+        AccentPolicyHelper.EnableAcrylic(this, _theme.Acrylic);
     }
 
-    private static bool IsSystemLightTheme()
+    private void ApplyTheme()
     {
-        try
-        {
-            using RegistryKey? key = Registry.CurrentUser.OpenSubKey(
-                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            object? value = key?.GetValue("AppsUseLightTheme");
-            return value is 1;
-        }
-        catch
-        {
-            return false;
-        }
+        bool isLight = _theme.IsLightTheme;
+
+        // Background with acrylic tint
+        Color bgColor = isLight ? ThemeManager.LightBackground : ThemeManager.DarkBackground;
+        Color fgColor = isLight ? ThemeManager.LightForeground : ThemeManager.DarkForeground;
+        Color borderColor = isLight ? ThemeManager.LightBorder : ThemeManager.DarkBorder;
+        Color separatorColor = isLight ? ThemeManager.LightSeparator : ThemeManager.DarkSeparator;
+
+        // Semi-transparent background for acrylic effect
+        RootBorder.Background = new SolidColorBrush(Color.FromArgb(0xE8, bgColor.R, bgColor.G, bgColor.B));
+        RootBorder.BorderBrush = new SolidColorBrush(borderColor);
+
+        // Text colors
+        SolidColorBrush foregroundBrush = new(fgColor);
+        HeaderText.Foreground = foregroundBrush;
+        FlyoutStyleLabel.Foreground = foregroundBrush;
+        AdapterLabel.Foreground = foregroundBrush;
+        IconColorsHeader.Foreground = foregroundBrush;
+        ConnectedLabel.Foreground = foregroundBrush;
+        NoInternetLabel.Foreground = foregroundBrush;
+        DisconnectedLabel.Foreground = foregroundBrush;
+        ApplyColorsToLightThemeCheckBox.Foreground = foregroundBrush;
+
+        // Separators
+        SolidColorBrush separatorBrush = new(separatorColor);
+        Separator1.Fill = separatorBrush;
+        Separator2.Fill = separatorBrush;
+
+        // Color preview borders
+        SolidColorBrush borderBrush = new(borderColor);
+        ConnectedColorPreview.BorderBrush = borderBrush;
+        NoInternetColorPreview.BorderBrush = borderBrush;
+        DisconnectedColorPreview.BorderBrush = borderBrush;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -59,13 +88,7 @@ public partial class SettingsWindow : Window
         // Position at bottom-right of work area (near system tray)
         Rect workArea = SystemParameters.WorkArea;
         Left = workArea.Right - ActualWidth - 12;
-        Top = workArea.Bottom - ActualHeight + 18;
-    }
-
-    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
-    {
-        // Set flag before window closes to prevent Deactivated from calling Close() again
-        _isClosing = true;
+        Top = workArea.Bottom - ActualHeight - 12;
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
@@ -74,6 +97,8 @@ public partial class SettingsWindow : Window
         if (!_isClosing)
         {
             _isClosing = true;
+            // Disable acrylic before closing to avoid visual artifacts
+            AccentPolicyHelper.DisableAcrylic(this);
             Close();
         }
     }
@@ -195,7 +220,7 @@ public partial class SettingsWindow : Window
         _settings.Save();
     }
 
-    private static void UpdateColorPreview(Border preview, string hexColor)
+    private static void UpdateColorPreview(System.Windows.Controls.Border preview, string hexColor)
     {
         if (TryParseColor(hexColor, out Color color))
         {
@@ -216,22 +241,22 @@ public partial class SettingsWindow : Window
             switch (hexColor.Length)
             {
                 case 6:
-                {
-                    byte r = Convert.ToByte(hexColor[0..2], 16);
-                    byte g = Convert.ToByte(hexColor[2..4], 16);
-                    byte b = Convert.ToByte(hexColor[4..6], 16);
-                    color = Color.FromArgb(255, r, g, b);
-                    return true;
-                }
+                    {
+                        byte r = Convert.ToByte(hexColor[0..2], 16);
+                        byte g = Convert.ToByte(hexColor[2..4], 16);
+                        byte b = Convert.ToByte(hexColor[4..6], 16);
+                        color = Color.FromArgb(255, r, g, b);
+                        return true;
+                    }
                 case 8:
-                {
-                    byte a = Convert.ToByte(hexColor[0..2], 16);
-                    byte r = Convert.ToByte(hexColor[2..4], 16);
-                    byte g = Convert.ToByte(hexColor[4..6], 16);
-                    byte b = Convert.ToByte(hexColor[6..8], 16);
-                    color = Color.FromArgb(a, r, g, b);
-                    return true;
-                }
+                    {
+                        byte a = Convert.ToByte(hexColor[0..2], 16);
+                        byte r = Convert.ToByte(hexColor[2..4], 16);
+                        byte g = Convert.ToByte(hexColor[4..6], 16);
+                        byte b = Convert.ToByte(hexColor[6..8], 16);
+                        color = Color.FromArgb(a, r, g, b);
+                        return true;
+                    }
             }
         }
         catch

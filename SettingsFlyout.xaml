@@ -1,0 +1,156 @@
+<Window
+    x:Class="NetworkTrayAppWpf.SettingsFlyout"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="NetTray Settings"
+    Width="320"
+    SizeToContent="Height"
+    ResizeMode="NoResize"
+    WindowStyle="None"
+    AllowsTransparency="True"
+    Background="Transparent"
+    ShowInTaskbar="False"
+    Topmost="True"
+    WindowStartupLocation="Manual"
+    Deactivated="Window_Deactivated"
+    SourceInitialized="Window_SourceInitialized"
+    UseLayoutRounding="True"
+    SnapsToDevicePixels="True"
+    TextOptions.TextFormattingMode="Display">
+
+    <Border x:Name="RootBorder"
+            CornerRadius="8"
+            BorderThickness="1"
+            Padding="0">
+
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.3" Direction="270"/>
+        </Border.Effect>
+
+        <Grid>
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Padding="16">
+                <StackPanel x:Name="ContentPanel">
+
+                    <!-- Header -->
+                    <TextBlock x:Name="HeaderText"
+                               Text="NetTray Settings"
+                               FontSize="20"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,16"/>
+
+                    <!-- Left-click action -->
+                    <TextBlock x:Name="FlyoutStyleLabel"
+                               Text="Left-click action"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,6"/>
+                    <ComboBox x:Name="FlyoutStyleComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectionChanged="FlyoutStyleComboBox_SelectionChanged">
+                        <ComboBoxItem Tag="Windows10" Content="Windows 10 Network Flyout"/>
+                        <ComboBoxItem Tag="Windows11" Content="Windows 11 Control Center"/>
+                        <ComboBoxItem Tag="QuickSettings" Content="Quick Settings"/>
+                        <ComboBoxItem Tag="AvailableNetworks" Content="Available Networks"/>
+                        <ComboBoxItem Tag="Settings" Content="Network Settings"/>
+                    </ComboBox>
+
+                    <!-- Adapter Settings -->
+                    <TextBlock x:Name="AdapterLabel"
+                               Text="Adapter settings window"
+                               FontWeight="SemiBold"
+                               Margin="0,16,0,6"/>
+                    <ComboBox x:Name="AdapterSettingsStyleComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectionChanged="AdapterSettingsStyleComboBox_SelectionChanged">
+                        <ComboBoxItem Tag="Explorer" Content="Explorer window"/>
+                        <ComboBoxItem Tag="ControlPanel" Content="Control Panel"/>
+                    </ComboBox>
+
+                    <!-- Separator -->
+                    <Rectangle x:Name="Separator1"
+                               Height="1"
+                               Margin="0,16"/>
+
+                    <!-- Icon Colors Section -->
+                    <TextBlock x:Name="IconColorsHeader"
+                               Text="Icon Colors"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,12"/>
+
+                    <!-- Connected Color -->
+                    <TextBlock x:Name="ConnectedLabel"
+                               Text="Connected"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,6"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Border x:Name="ConnectedColorPreview"
+                                Width="32" Height="32"
+                                CornerRadius="4"
+                                BorderThickness="1"
+                                Margin="0,0,8,0"/>
+                        <TextBox x:Name="ConnectedColorTextBox"
+                                 Width="100"
+                                 VerticalContentAlignment="Center"
+                                 TextChanged="ConnectedColorTextBox_TextChanged"/>
+                    </StackPanel>
+
+                    <!-- No Internet Color -->
+                    <TextBlock x:Name="NoInternetLabel"
+                               Text="No Internet"
+                               FontWeight="SemiBold"
+                               Margin="0,12,0,6"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Border x:Name="NoInternetColorPreview"
+                                Width="32" Height="32"
+                                CornerRadius="4"
+                                BorderThickness="1"
+                                Margin="0,0,8,0"/>
+                        <TextBox x:Name="NoInternetColorTextBox"
+                                 Width="100"
+                                 VerticalContentAlignment="Center"
+                                 TextChanged="NoInternetColorTextBox_TextChanged"/>
+                    </StackPanel>
+
+                    <!-- Disconnected Color -->
+                    <TextBlock x:Name="DisconnectedLabel"
+                               Text="Disconnected"
+                               FontWeight="SemiBold"
+                               Margin="0,12,0,6"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Border x:Name="DisconnectedColorPreview"
+                                Width="32" Height="32"
+                                CornerRadius="4"
+                                BorderThickness="1"
+                                Margin="0,0,8,0"/>
+                        <TextBox x:Name="DisconnectedColorTextBox"
+                                 Width="100"
+                                 VerticalContentAlignment="Center"
+                                 TextChanged="DisconnectedColorTextBox_TextChanged"/>
+                    </StackPanel>
+
+                    <!-- Apply to Light Theme -->
+                    <CheckBox x:Name="ApplyColorsToLightThemeCheckBox"
+                              Content="Apply colors to light theme"
+                              Margin="0,12,0,0"
+                              Checked="ApplyColorsToLightThemeCheckBox_Changed"
+                              Unchecked="ApplyColorsToLightThemeCheckBox_Changed"/>
+
+                    <!-- Separator -->
+                    <Rectangle x:Name="Separator2"
+                               Height="1"
+                               Margin="0,16"/>
+
+                    <!-- Open JSON link -->
+                    <Button x:Name="OpenJsonButton"
+                            Content="Open settings.json"
+                            Click="OpenJsonButton_Click"
+                            HorizontalAlignment="Left"
+                            Padding="12,6"/>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>

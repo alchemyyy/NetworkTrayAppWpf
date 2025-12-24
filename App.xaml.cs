@@ -1,42 +1,56 @@
-using H.NotifyIcon;
 using Microsoft.Win32;
-using ModernWpf;
+using NetworkTrayAppWpf.Interop;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using System.Windows.Threading;
+using Point = System.Windows.Point;
 
 namespace NetworkTrayAppWpf;
 
+/// <summary>
+/// Network Tray Icon Application
+/// Uses software rendering and custom Win32 APIs instead of heavy UI libraries.
+/// </summary>
 public partial class App
 {
-    private TaskbarIcon? _trayIcon;
+    private ShellNotifyIcon? _trayIcon;
     private NetworkMonitor? _networkMonitor;
-    private IconProvider? _iconProvider;
+    private TrayIconRenderer? _iconRenderer;
     private AppSettings? _settings;
     private DispatcherTimer? _refreshTimer;
-    private SettingsWindow? _settingsWindow;
-    private ThemeHelper? _themeHelper;
+    private SettingsFlyout? _settingsFlyout;
+    private ThemeManager? _themeManager;
+    private ContextMenu? _contextMenu;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
+        // CRITICAL: Enable software-only rendering to reduce memory footprint
+        // This is the single most important optimization from EarTrumpet
+        RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+
+        // Set up exception handlers for crash handler support
+        AppDomain.CurrentDomain.UnhandledException += (_, _) => Environment.Exit(1);
+        DispatcherUnhandledException += (_, args) =>
+        {
+            args.Handled = true;
+            Environment.Exit(1);
+        };
+
         _settings = AppSettings.Load();
-        _iconProvider = new IconProvider(_settings);
+        _iconRenderer = new TrayIconRenderer(_settings);
         _networkMonitor = new NetworkMonitor();
 
-        // Initialize theme detection
-        _themeHelper = new ThemeHelper();
-        _iconProvider.IsLightTheme = _themeHelper.IsTaskbarLightTheme;
-        _themeHelper.ThemeChanged += OnThemeChanged;
+        // Initialize lightweight theme manager
+        _themeManager = new ThemeManager();
+        _iconRenderer.IsLightTheme = _themeManager.IsLightTheme;
+        _themeManager.ThemeChanged += OnThemeChanged;
 
-        // Subscribe to display settings changes (DPI, resolution, monitors)
+        // Subscribe to display settings changes
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
-
-        // Enable dark mode for any Win32 elements
-        //NativeMethods.EnableDarkModeForApp();
 
         CreateTrayIcon();
 
@@ -52,55 +66,21 @@ public partial class App
         _refreshTimer.Start();
 
         UpdateTrayIcon();
-
-        // Pre-warm context menu after initial render to avoid first-open delay
-        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, PreWarmContextMenu);
-    }
-
-    private void PreWarmContextMenu()
-    {
-        if (_trayIcon?.ContextMenu == null)
-            return;
-
-        ContextMenu menu = _trayIcon.ContextMenu;
-
-        try
-        {
-            // Store original values
-            double originalOpacity = menu.Opacity;
-
-            // Make menu invisible during pre-warm
-            menu.Opacity = 0;
-
-            // Position off-screen to avoid any visual flash
-            menu.Placement = PlacementMode.Absolute;
-            menu.HorizontalOffset = -10000;
-            menu.VerticalOffset = -10000;
-
-            // Open the menu to force visual tree creation and template instantiation
-            menu.IsOpen = true;
-
-            // Force layout to complete - this triggers all lazy loading
-            menu.UpdateLayout();
-
-            // Close immediately
-            menu.IsOpen = false;
-
-            // Restore original opacity
-            menu.Opacity = originalOpacity;
-
-            // Reset placement for normal operation
-            menu.ClearValue(ContextMenu.PlacementProperty);
-            menu.ClearValue(ContextMenu.HorizontalOffsetProperty);
-            menu.ClearValue(ContextMenu.VerticalOffsetProperty);
-        }
-        catch
-        {
-            // Ignore pre-warm failures - menu will just load on first click
-        }
     }
 
     private void CreateTrayIcon()
+    {
+        _contextMenu = CreateContextMenu();
+
+        _trayIcon = new ShellNotifyIcon();
+        _trayIcon.LeftClick += OnTrayLeftClick;
+        _trayIcon.RightClick += OnTrayRightClick;
+
+        UpdateTrayIcon();
+        _trayIcon.IsVisible = true;
+    }
+
+    private ContextMenu CreateContextMenu()
     {
         ContextMenu contextMenu = new();
 
@@ -123,18 +103,56 @@ public partial class App
         contextMenu.Items.Add(new Separator());
         contextMenu.Items.Add(exitItem);
 
-        _trayIcon = new TaskbarIcon
+        // Apply theme to context menu
+        ApplyContextMenuTheme(contextMenu);
+
+        return contextMenu;
+    }
+
+    private void ApplyContextMenuTheme(ContextMenu menu)
+    {
+        bool isLight = _themeManager?.IsLightTheme ?? false;
+
+        menu.Background = new SolidColorBrush(isLight
+            ? ThemeManager.LightBackground
+            : ThemeManager.DarkBackground);
+        menu.Foreground = new SolidColorBrush(isLight
+            ? ThemeManager.LightForeground
+            : ThemeManager.DarkForeground);
+        menu.BorderBrush = new SolidColorBrush(isLight
+            ? ThemeManager.LightBorder
+            : ThemeManager.DarkBorder);
+
+        foreach (object item in menu.Items)
         {
-            ContextMenu = contextMenu,
-            ToolTipText = "Network",
-            LeftClickCommand = new RelayCommand(OpenNetworkFlyout)
-        };
+            if (item is MenuItem menuItem)
+            {
+                menuItem.Foreground = menu.Foreground;
+            }
+            else if (item is Separator separator)
+            {
+                separator.Background = new SolidColorBrush(isLight
+                    ? ThemeManager.LightSeparator
+                    : ThemeManager.DarkSeparator);
+            }
+        }
+    }
 
-        // Set initial icon
-        UpdateTrayIcon();
+    private void OnTrayLeftClick()
+    {
+        Dispatcher.BeginInvoke(OpenNetworkFlyout);
+    }
 
-        // Force the icon to appear in the system tray
-        _trayIcon.ForceCreate();
+    private void OnTrayRightClick(Point point)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_contextMenu != null && _trayIcon != null)
+            {
+                ApplyContextMenuTheme(_contextMenu);
+                _trayIcon.ShowContextMenu(_contextMenu, point);
+            }
+        });
     }
 
     private void OnNetworkStateChanged(NetworkIconState state)
@@ -146,87 +164,38 @@ public partial class App
     {
         Dispatcher.BeginInvoke(() =>
         {
-            if (_iconProvider != null)
+            if (_iconRenderer != null)
             {
-                _iconProvider.IsLightTheme = isLightTheme;
+                _iconRenderer.IsLightTheme = isLightTheme;
                 UpdateTrayIcon();
-            }
-
-            // Update ModernWpf theme for context menu
-            if (_trayIcon?.ContextMenu != null)
-            {
-                ThemeManager.SetRequestedTheme(
-                    _trayIcon.ContextMenu,
-                    isLightTheme ? ElementTheme.Light : ElementTheme.Dark);
             }
         });
     }
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)
     {
-        // Display settings changed (DPI, resolution, monitors connected/disconnected)
-        // Invalidate cached context menu layout to ensure correct positioning
-        Dispatcher.BeginInvoke(InvalidateContextMenuLayout);
-    }
-
-    private void InvalidateContextMenuLayout()
-    {
-        if (_trayIcon?.ContextMenu == null)
-            return;
-
-        ContextMenu menu = _trayIcon.ContextMenu;
-
-        // Invalidate all cached layout/render data so WPF recalculates with new DPI
-        menu.InvalidateMeasure();
-        menu.InvalidateArrange();
-        menu.InvalidateVisual();
-
-        // Also invalidate all menu items
-        foreach (object item in menu.Items)
-        {
-            if (item is UIElement element)
-            {
-                element.InvalidateMeasure();
-                element.InvalidateArrange();
-                element.InvalidateVisual();
-            }
-        }
-
-        // Clear any cached placement properties that may have stale DPI-dependent values
-        menu.ClearValue(ContextMenu.PlacementProperty);
-        menu.ClearValue(ContextMenu.HorizontalOffsetProperty);
-        menu.ClearValue(ContextMenu.VerticalOffsetProperty);
-
-        // Re-warm the menu with fresh layout calculations
-        // Use a slight delay to ensure display settings have fully propagated
-        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, PreWarmContextMenu);
+        // Display settings changed - update icon
+        Dispatcher.BeginInvoke(UpdateTrayIcon);
     }
 
     private void UpdateTrayIcon()
     {
-        if (_trayIcon == null || _networkMonitor == null || _iconProvider == null)
+        if (_trayIcon == null || _networkMonitor == null || _iconRenderer == null)
             return;
 
         NetworkIconState state = _networkMonitor.CurrentState;
 
-        // Create icon from glyph
-        _trayIcon.IconSource = CreateIconSource(state);
-        _trayIcon.ToolTipText = _networkMonitor.GetTooltipText();
-    }
-
-    private GeneratedIconSource CreateIconSource(NetworkIconState state)
-    {
-        return new GeneratedIconSource
-        {
-            Text = IconProvider.GetGlyph(state),
-            Foreground = _iconProvider!.GetBrush(state),
-            FontFamily = IconProvider.IconFontFamily,
-            FontSize = 64
-        };
+        // Create icon with layered rendering
+        _trayIcon.SetIcon(_iconRenderer.CreateIcon(state));
+        _trayIcon.SetTooltip(_networkMonitor.GetTooltipText());
     }
 
     private void OpenNetworkFlyout()
     {
+#if DEBUG
+        // Debug mode: simulate a crash to test the crash handler
+        Environment.Exit(42);
+#else
         FlyoutStyle flyoutStyle = _settings?.Tray.FlyoutStyle ?? FlyoutStyle.AvailableNetworks;
 
         bool success = flyoutStyle switch
@@ -243,6 +212,7 @@ public partial class App
         {
             TryOpenUri("ms-availablenetworks:");
         }
+#endif
     }
 
     private static bool TryOpenUri(string uri)
@@ -280,33 +250,34 @@ public partial class App
 
     private void OpenAppSettings()
     {
-        if (_settingsWindow != null)
+        // Close existing settings flyout if open
+        if (_settingsFlyout != null)
         {
             try
             {
-                _settingsWindow.Closed -= OnSettingsWindowClosed;
-                _settingsWindow.Close();
+                _settingsFlyout.Closed -= OnSettingsFlyoutClosed;
+                _settingsFlyout.Close();
             }
             catch
             {
-                // ignored
+                // Ignored
             }
-            _settingsWindow = null;
+            _settingsFlyout = null;
         }
 
-        if (_settings == null) return;
+        if (_settings == null || _themeManager == null) return;
 
-        _settingsWindow = new SettingsWindow(_settings);
-        _settingsWindow.Closed += OnSettingsWindowClosed;
-        _settingsWindow.Show();
+        _settingsFlyout = new SettingsFlyout(_settings, _themeManager);
+        _settingsFlyout.Closed += OnSettingsFlyoutClosed;
+        _settingsFlyout.Show();
     }
 
-    private void OnSettingsWindowClosed(object? sender, EventArgs args)
+    private void OnSettingsFlyoutClosed(object? sender, EventArgs args)
     {
-        if (_settingsWindow != null)
+        if (_settingsFlyout != null)
         {
-            _settingsWindow.Closed -= OnSettingsWindowClosed;
-            _settingsWindow = null;
+            _settingsFlyout.Closed -= OnSettingsFlyoutClosed;
+            _settingsFlyout = null;
         }
 
         // Refresh icon in case colors changed
@@ -349,9 +320,10 @@ public partial class App
     {
         _refreshTimer?.Stop();
         SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
-        _themeHelper?.Dispose();
+        _themeManager?.Dispose();
         _networkMonitor?.Dispose();
+        _iconRenderer?.Dispose();
         _trayIcon?.Dispose();
-        Shutdown();
+        Shutdown(0);
     }
 }
