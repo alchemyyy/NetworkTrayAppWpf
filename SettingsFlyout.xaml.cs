@@ -13,14 +13,14 @@ namespace NetworkTrayAppWpf;
 public partial class SettingsFlyout : Window
 {
     private readonly AppSettings _settings;
-    private readonly ThemeManager _theme;
+    private readonly ThemeColorManager _themeColor;
     private bool _isInitializing = true;
     private bool _isClosing;
 
-    public SettingsFlyout(AppSettings settings, ThemeManager theme)
+    public SettingsFlyout(AppSettings settings, ThemeColorManager themeColor)
     {
         _settings = settings;
-        _theme = theme;
+        _themeColor = themeColor;
 
         InitializeComponent();
 
@@ -33,21 +33,21 @@ public partial class SettingsFlyout : Window
         // Apply window styles after handle is created
         this.ApplyToolWindowStyle();
         this.EnableRoundedCorners();
-        this.SetDarkMode(!_theme.IsLightTheme);
+        this.SetDarkMode(!_themeColor.IsLightTheme);
 
         // Enable acrylic blur
-        AccentPolicyHelper.EnableAcrylic(this, _theme.Acrylic);
+        AccentPolicyHelper.EnableAcrylic(this, _themeColor.Acrylic);
     }
 
     private void ApplyTheme()
     {
-        bool isLight = _theme.IsLightTheme;
+        bool isLight = _themeColor.IsLightTheme;
 
         // Background with acrylic tint
-        Color bgColor = isLight ? ThemeManager.LightBackground : ThemeManager.DarkBackground;
-        Color fgColor = isLight ? ThemeManager.LightForeground : ThemeManager.DarkForeground;
-        Color borderColor = isLight ? ThemeManager.LightBorder : ThemeManager.DarkBorder;
-        Color separatorColor = isLight ? ThemeManager.LightSeparator : ThemeManager.DarkSeparator;
+        Color bgColor = isLight ? ThemeColorManager.LightBackground : ThemeColorManager.DarkBackground;
+        Color fgColor = isLight ? ThemeColorManager.LightForeground : ThemeColorManager.DarkForeground;
+        Color borderColor = isLight ? ThemeColorManager.LightBorder : ThemeColorManager.DarkBorder;
+        Color separatorColor = isLight ? ThemeColorManager.LightSeparator : ThemeColorManager.DarkSeparator;
 
         // Semi-transparent background for acrylic effect
         RootBorder.Background = new SolidColorBrush(Color.FromArgb(0xE8, bgColor.R, bgColor.G, bgColor.B));
@@ -136,7 +136,7 @@ public partial class SettingsFlyout : Window
         UpdateColorPreview(NoInternetColorPreview, _settings.Icon.NoInternetColor);
         UpdateColorPreview(DisconnectedColorPreview, _settings.Icon.DisconnectedColor);
 
-        // Set apply to light theme checkbox
+        // Set apply to light themeColor checkbox
         ApplyColorsToLightThemeCheckBox.IsChecked = _settings.Icon.ApplyColorsToLightTheme;
     }
 

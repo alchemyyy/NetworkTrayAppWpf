@@ -31,7 +31,7 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
                           Padding="16">
-                <StackPanel x:Name="ContentPanel">
+                <StackPanel x:Name="ContentPanel" TextElement.FontWeight="Medium">
 
                     <!-- Header -->
                     <TextBlock x:Name="HeaderText"
@@ -132,7 +132,7 @@
 
                     <!-- Apply to Light Theme -->
                     <CheckBox x:Name="ApplyColorsToLightThemeCheckBox"
-                              Content="Apply colors to light theme"
+                              Content="Apply colors to light themeColor"
                               Margin="0,12,0,0"
                               Checked="ApplyColorsToLightThemeCheckBox_Changed"
                               Unchecked="ApplyColorsToLightThemeCheckBox_Changed"/>

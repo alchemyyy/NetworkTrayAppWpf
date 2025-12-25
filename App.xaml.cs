@@ -21,7 +21,7 @@ public partial class App
     private AppSettings? _settings;
     private DispatcherTimer? _refreshTimer;
     private SettingsFlyout? _settingsFlyout;
-    private ThemeManager? _themeManager;
+    private ThemeColorManager? _themeManager;
     private ContextMenu? _contextMenu;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -45,7 +45,7 @@ public partial class App
         _networkMonitor = new NetworkMonitor();
 
         // Initialize lightweight theme manager
-        _themeManager = new ThemeManager();
+        _themeManager = new ThemeColorManager();
         _iconRenderer.IsLightTheme = _themeManager.IsLightTheme;
         _themeManager.ThemeChanged += OnThemeChanged;
         UpdateThemeResources(_themeManager.IsLightTheme);
@@ -115,26 +115,27 @@ public partial class App
         bool isLight = _themeManager?.IsLightTheme ?? false;
 
         menu.Background = new SolidColorBrush(isLight
-            ? ThemeManager.LightBackground
-            : ThemeManager.DarkBackground);
+            ? ThemeColorManager.LightBackground
+            : ThemeColorManager.DarkBackground);
         menu.Foreground = new SolidColorBrush(isLight
-            ? ThemeManager.LightForeground
-            : ThemeManager.DarkForeground);
+            ? ThemeColorManager.LightForeground
+            : ThemeColorManager.DarkForeground);
         menu.BorderBrush = new SolidColorBrush(isLight
-            ? ThemeManager.LightBorder
-            : ThemeManager.DarkBorder);
+            ? ThemeColorManager.LightBorder
+            : ThemeColorManager.DarkBorder);
 
         foreach (object item in menu.Items)
         {
-            if (item is MenuItem menuItem)
+            switch (item)
             {
-                menuItem.Foreground = menu.Foreground;
-            }
-            else if (item is Separator separator)
-            {
-                separator.Background = new SolidColorBrush(isLight
-                    ? ThemeManager.LightSeparator
-                    : ThemeManager.DarkSeparator);
+                case MenuItem menuItem:
+                    menuItem.Foreground = menu.Foreground;
+                    break;
+                case Separator separator:
+                    separator.Background = new SolidColorBrush(isLight
+                        ? ThemeColorManager.LightSeparator
+                        : ThemeColorManager.DarkSeparator);
+                    break;
             }
         }
     }
@@ -177,29 +178,31 @@ public partial class App
     private void UpdateThemeResources(bool isLightTheme)
     {
         Resources["ThemeBackground"] = new SolidColorBrush(isLightTheme
-            ? ThemeManager.LightBackground
-            : ThemeManager.DarkBackground);
+            ? ThemeColorManager.LightBackground
+            : ThemeColorManager.DarkBackground);
         Resources["ThemeForeground"] = new SolidColorBrush(isLightTheme
-            ? ThemeManager.LightForeground
-            : ThemeManager.DarkForeground);
+            ? ThemeColorManager.LightForeground
+            : ThemeColorManager.DarkForeground);
         Resources["ThemeBorder"] = new SolidColorBrush(isLightTheme
-            ? ThemeManager.LightBorder
-            : ThemeManager.DarkBorder);
+            ? ThemeColorManager.LightBorder
+            : ThemeColorManager.DarkBorder);
         Resources["ThemeHover"] = new SolidColorBrush(isLightTheme
-            ? ThemeManager.LightHover
-            : ThemeManager.DarkHover);
+            ? ThemeColorManager.LightHover
+            : ThemeColorManager.DarkHover);
         Resources["ThemePressed"] = new SolidColorBrush(isLightTheme
-            ? ThemeManager.LightPressed
-            : ThemeManager.DarkPressed);
+            ? ThemeColorManager.LightPressed
+            : ThemeColorManager.DarkPressed);
         Resources["ThemeSeparator"] = new SolidColorBrush(isLightTheme
-            ? ThemeManager.LightSeparator
-            : ThemeManager.DarkSeparator);
+            ? ThemeColorManager.LightSeparator
+            : ThemeColorManager.DarkSeparator);
         Resources["ThemeControlBackground"] = new SolidColorBrush(isLightTheme
-            ? ThemeManager.LightControlBackground
-            : ThemeManager.DarkControlBackground);
+            ? ThemeColorManager.LightControlBackground
+            : ThemeColorManager.DarkControlBackground);
         Resources["ThemeControlBorder"] = new SolidColorBrush(isLightTheme
-            ? ThemeManager.LightControlBorder
-            : ThemeManager.DarkControlBorder);
+            ? ThemeColorManager.LightControlBorder
+            : ThemeColorManager.DarkControlBorder);
+        Resources["ThemeDisabledForeground"] = new SolidColorBrush(ThemeColorManager.DisabledForeground);
+        Resources["ThemeAccent"] = new SolidColorBrush(ThemeColorManager.Accent);
     }
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)
@@ -338,6 +341,8 @@ public partial class App
                         UseShellExecute = true
                     });
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
         catch

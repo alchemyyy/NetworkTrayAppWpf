@@ -8,7 +8,7 @@ namespace NetworkTrayAppWpf;
 /// Lightweight theme manager for detecting system theme and providing theme colors.
 /// Replaces the heavy ModernWpfUI theme system.
 /// </summary>
-public sealed class ThemeManager : IDisposable
+public sealed class ThemeColorManager : IDisposable
 {
     private const string PersonalizeKey = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
 
@@ -20,6 +20,8 @@ public sealed class ThemeManager : IDisposable
     public bool IsLightTheme { get; private set; }
 
     // Theme colors
+
+    //default windows 11 context menu grey background: Color.FromRgb(0x2D, 0x2D, 0x2D);
     public static Color DarkBackground => Color.FromRgb(0x20, 0x20, 0x20);
     public static Color LightBackground => Color.FromRgb(0xF3, 0xF3, 0xF3);
 
@@ -45,6 +47,12 @@ public sealed class ThemeManager : IDisposable
     public static Color DarkControlBorder => Color.FromRgb(0x44, 0x44, 0x44);
     public static Color LightControlBorder => Color.FromRgb(0x80, 0x80, 0x80);
 
+    // Disabled state
+    public static Color DisabledForeground => Color.FromRgb(0x80, 0x80, 0x80);
+
+    // Accent color (Windows blue)
+    public static Color Accent => Color.FromRgb(0x00, 0x78, 0xD4);
+
     // Acrylic colors (with transparency)
     public static Color DarkAcrylic => Color.FromArgb(0xD0, 0x20, 0x20, 0x20);
     public static Color LightAcrylic => Color.FromArgb(0xD0, 0xF3, 0xF3, 0xF3);
@@ -59,7 +67,7 @@ public sealed class ThemeManager : IDisposable
     public Color ControlBackground => IsLightTheme ? LightControlBackground : DarkControlBackground;
     public Color ControlBorder => IsLightTheme ? LightControlBorder : DarkControlBorder;
 
-    public ThemeManager()
+    public ThemeColorManager()
     {
         IsLightTheme = DetectSystemLightTheme();
         _lastKnownIsLightTheme = IsLightTheme;

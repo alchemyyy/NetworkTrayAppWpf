@@ -43,7 +43,7 @@ echo Stopping running instances...
 taskkill /f /im "%EXE_NAME%" >nul 2>&1
 timeout /t 2 /nobreak >nul
 
-:: Remove from startup (if registered)
+:: Remove from startup (registry)
 echo Removing startup entries...
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "%APP_NAME%" /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "%APP_NAME%" /f >nul 2>&1
@@ -81,12 +81,19 @@ if exist "%INSTALL_DIR%" (
     :: If directory still exists (because uninstall.bat is in it), schedule cleanup
     if exist "%INSTALL_DIR%" (
         :: Create a self-deleting cleanup script
-        echo @echo off > "%TEMP%\cleanup_networktray.bat"
-        echo timeout /t 3 /nobreak ^>nul >> "%TEMP%\cleanup_networktray.bat"
-        echo rmdir /s /q "%INSTALL_DIR%" >> "%TEMP%\cleanup_networktray.bat"
-        echo del /f /q "%%~f0" >> "%TEMP%\cleanup_networktray.bat"
-        start "" /min cmd /c "%TEMP%\cleanup_networktray.bat"
+        (
+            echo @echo off
+            echo timeout /t 3 /nobreak ^>nul
+            echo rmdir /s /q "%INSTALL_DIR%"
+            echo del /f /q "%%~f0"
+        ) > "%TEMP%\cleanup_networktray.bat" 2>nul
+        if exist "%TEMP%\cleanup_networktray.bat" (
+            start "" /min cmd /c "%TEMP%\cleanup_networktray.bat" >nul 2>&1
+        )
     )
+) else (
+    :: Installation directory doesn't exist, nothing to remove
+    echo Installation directory not found, skipping...
 )
 
 if %QUIET_MODE%==0 (
@@ -97,7 +104,9 @@ if %QUIET_MODE%==0 (
     echo.
     echo NetworkTrayAppWpf has been removed from your system.
     echo.
-    pause
+    echo This window will close in 5 seconds, press any key to keep open...
+    timeout /t 5 >nul
+    if !errorlevel!==1 pause >nul
 )
 
 exit /b 0

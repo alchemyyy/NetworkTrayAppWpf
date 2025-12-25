@@ -99,6 +99,36 @@ reg add "%UNINSTALL_KEY%" /v "EstimatedSize" /t REG_DWORD /d %SIZE_KB% /f >nul
 reg add "%UNINSTALL_KEY%" /v "NoModify" /t REG_DWORD /d 1 /f >nul
 reg add "%UNINSTALL_KEY%" /v "NoRepair" /t REG_DWORD /d 1 /f >nul
 
+:: Add to Windows startup via registry
+echo Adding to Windows startup...
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "%APP_NAME%" /t REG_SZ /d "\"%INSTALL_DIR%\%EXE_NAME%\"" /f >nul 2>&1
+if %errorlevel%==0 (
+    echo Startup entry created successfully.
+) else (
+    echo Warning: Could not create startup entry.
+)
+
+:: Create Start Menu shortcut
+echo Creating Start Menu entry...
+set "STARTMENU_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs"
+set "STARTMENU_LNK=%STARTMENU_FOLDER%\Network Tray App.lnk"
+set "VBS_FILE=%TEMP%\create_startmenu.vbs"
+(
+    echo Set ws = CreateObject^("WScript.Shell"^)
+    echo Set lnk = ws.CreateShortcut^("%STARTMENU_LNK%"^)
+    echo lnk.TargetPath = "%INSTALL_DIR%\%EXE_NAME%"
+    echo lnk.WorkingDirectory = "%INSTALL_DIR%"
+    echo lnk.Description = "Network Tray App"
+    echo lnk.Save
+) > "%VBS_FILE%"
+cscript //nologo "%VBS_FILE%" >nul 2>&1
+del /f /q "%VBS_FILE%" >nul 2>&1
+if exist "%STARTMENU_LNK%" (
+    echo Start Menu entry created successfully.
+) else (
+    echo Warning: Could not create Start Menu entry.
+)
+
 echo.
 echo ========================================
 echo  Installation Complete!
@@ -106,20 +136,15 @@ echo ========================================
 echo.
 echo Installed to: %INSTALL_DIR%
 echo.
-echo To start the application, run:
-echo   "%INSTALL_DIR%\%EXE_NAME%"
-echo.
 echo To uninstall, use Add/Remove Programs or run:
 echo   "%INSTALL_DIR%\uninstall.bat"
 echo.
 
-:: Ask if user wants to start the app
-choice /c YN /m "Start NetworkTrayAppWpf now"
-if %errorlevel%==1 (
-    echo Starting application...
-    start "" "%INSTALL_DIR%\%EXE_NAME%"
-)
+:: Start the application
+echo Starting application...
+start "" "%INSTALL_DIR%\%EXE_NAME%"
 
-echo.
-pause
+echo This window will close in 5 seconds, press any key to keep open...
+timeout /t 5 >nul
+if %errorlevel%==1 pause >nul
 exit /b 0
