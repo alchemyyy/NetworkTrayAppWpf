@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace NetworkTrayAppWpf;
@@ -5,7 +6,11 @@ namespace NetworkTrayAppWpf;
 /// <summary>
 /// Provides methods to invoke Windows shell flyouts via COM interfaces.
 /// </summary>
-internal static unsafe class ShellFlyout
+[UnconditionalSuppressMessage("Trimming", "IL2050:Incorrect use of COM marshalling",
+    Justification = "COM interfaces are used with known, stable Windows shell COM objects")]
+[UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode",
+    Justification = "Delegate types are statically defined and not generated dynamically")]
+internal static unsafe partial class ShellFlyout
 {
     private static readonly Guid CLSID_ImmersiveShell = new("C2F03A33-21F5-47FA-B4BB-156362A2F239");
     private static readonly Guid IID_IServiceProvider = new("6D5140C1-7436-11CE-8034-00AA006009FA");
@@ -15,6 +20,7 @@ internal static unsafe class ShellFlyout
 
     private const int CLSCTX_LOCAL_SERVER = 4;
 
+    // Keep as DllImport - 'in' and 'out' Guid parameters need special handling
     [DllImport("ole32.dll")]
     private static extern int CoCreateInstance(
         in Guid rclsid,
@@ -23,14 +29,14 @@ internal static unsafe class ShellFlyout
         in Guid riid,
         out IntPtr ppv);
 
-    [DllImport("combase.dll", CharSet = CharSet.Unicode)]
-    private static extern int WindowsCreateString(
-        [MarshalAs(UnmanagedType.LPWStr)] string sourceString,
+    [LibraryImport("combase.dll", EntryPoint = "WindowsCreateString", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial int WindowsCreateString(
+        string sourceString,
         int length,
         out IntPtr hstring);
 
-    [DllImport("combase.dll")]
-    private static extern int WindowsDeleteString(IntPtr hstring);
+    [LibraryImport("combase.dll")]
+    private static partial int WindowsDeleteString(IntPtr hstring);
 
     public static bool ShowNetworkFlyoutWin10()
     {
@@ -93,7 +99,7 @@ internal static unsafe class ShellFlyout
         if (hr < 0 || handles.ExperienceManager == IntPtr.Zero)
             return false;
 
-        hr = Marshal.QueryInterface(handles.ExperienceManager, ref experienceIID, out handles.Flyout);
+        hr = Marshal.QueryInterface(handles.ExperienceManager, in experienceIID, out handles.Flyout);
         return hr >= 0 && handles.Flyout != IntPtr.Zero;
     }
 

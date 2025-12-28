@@ -1,6 +1,6 @@
+using NetworkTrayAppWpf.Interop;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 
 namespace NetworkTrayAppWpf;
 
@@ -27,7 +27,7 @@ internal static class CrashHandler
     /// </summary>
     public static int RunWatcher()
     {
-        string exePath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName ?? "";
+        string exePath = Environment.ProcessPath ?? "";
         string? exeDir = Path.GetDirectoryName(exePath);
 
         if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
@@ -37,7 +37,7 @@ internal static class CrashHandler
         }
 
         // Track rapid restarts to prevent infinite loops
-        Queue<long> restartTimes = new Queue<long>();
+        Queue<long> restartTimes = new(MaxRapidRestarts);
 
         // Check if app is already running
         Process? childProcess = FindExistingMonitoredProcess();
@@ -52,6 +52,11 @@ internal static class CrashHandler
                 return 1;
             }
         }
+
+        // Watcher should use minimal memory - force collection of startup allocations
+        // and trim working set since we're just waiting
+        GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+        GC.WaitForPendingFinalizers();
 
         // Main monitoring loop
         while (true)
@@ -107,6 +112,9 @@ internal static class CrashHandler
                 ShowError("Failed to restart NetworkTrayAppWpf");
                 break;
             }
+
+            // Clean up memory after restart
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
         }
 
         childProcess?.Dispose();
@@ -119,7 +127,7 @@ internal static class CrashHandler
     /// </summary>
     public static void LaunchWatcherDetached()
     {
-        string exePath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName ?? "";
+        string exePath = Environment.ProcessPath ?? "";
 
         if (string.IsNullOrEmpty(exePath))
             return;
@@ -163,10 +171,13 @@ internal static class CrashHandler
     {
         try
         {
+            // Pass watcher PID so monitored app can exit if watcher dies
+            int watcherPid = Environment.ProcessId;
+
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
                 FileName = exePath,
-                Arguments = "--monitored",
+                Arguments = $"--monitored --watcher-pid {watcherPid}",
                 WorkingDirectory = workDir,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -186,12 +197,11 @@ internal static class CrashHandler
     /// </summary>
     private static Process? FindExistingMonitoredProcess()
     {
-        string currentExeName = Path.GetFileNameWithoutExtension(
-            Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName ?? "");
-
-        if (string.IsNullOrEmpty(currentExeName))
+        string? exePath = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(exePath))
             return null;
 
+        string currentExeName = Path.GetFileNameWithoutExtension(exePath);
         int currentPid = Environment.ProcessId;
 
         try
@@ -217,10 +227,6 @@ internal static class CrashHandler
     private static void ShowError(string message)
     {
         // Use native MessageBox since we may not have WPF initialized
-        _ = MessageBox(IntPtr.Zero, message, "NetworkTrayAppWpf Crash Handler", 0x10); // MB_ICONERROR
-        return;
-
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+        User32.MessageBox(IntPtr.Zero, message, "NetworkTrayAppWpf Crash Handler", User32.MB_ICONERROR);
     }
 }

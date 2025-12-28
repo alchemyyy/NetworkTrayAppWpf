@@ -32,7 +32,7 @@ internal static class WindowExtensions
                 window.GetHandle(),
                 DwmApi.DWMA_CLOAK,
                 ref attributeValue,
-                Marshal.SizeOf(attributeValue));
+                sizeof(int));
         }
         catch
         {
@@ -54,7 +54,7 @@ internal static class WindowExtensions
                 window.GetHandle(),
                 DwmApi.DWMWA_WINDOW_CORNER_PREFERENCE,
                 ref attributeValue,
-                Marshal.SizeOf(attributeValue));
+                sizeof(int));
         }
         catch
         {
@@ -74,7 +74,7 @@ internal static class WindowExtensions
                 window.GetHandle(),
                 DwmApi.DWMWA_USE_IMMERSIVE_DARK_MODE,
                 ref attributeValue,
-                Marshal.SizeOf(attributeValue));
+                sizeof(int));
         }
         catch
         {

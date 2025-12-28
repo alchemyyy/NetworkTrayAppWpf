@@ -5,7 +5,7 @@ namespace NetworkTrayAppWpf.Interop;
 /// <summary>
 /// DWM (Desktop Window Manager) API for window cloaking and rounded corners.
 /// </summary>
-internal static class DwmApi
+internal static partial class DwmApi
 {
     internal const int DWMA_CLOAK = 13;
     internal const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
@@ -19,6 +19,7 @@ internal static class DwmApi
         DWMWCP_ROUNDSMALL = 3
     }
 
+    // Keep as DllImport - PreserveSig = false throws on error which LibraryImport doesn't support
     [DllImport("dwmapi.dll", PreserveSig = false)]
     internal static extern void DwmSetWindowAttribute(
         IntPtr hwnd,

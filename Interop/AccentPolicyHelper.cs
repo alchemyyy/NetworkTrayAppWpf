@@ -46,7 +46,7 @@ internal static class AccentPolicyHelper
 
     private static void SetAccentPolicy(IntPtr handle, User32.AccentPolicy policy)
     {
-        int accentStructSize = Marshal.SizeOf(policy);
+        int accentStructSize = Marshal.SizeOf<User32.AccentPolicy>();
         IntPtr accentPtr = Marshal.AllocHGlobal(accentStructSize);
 
         try

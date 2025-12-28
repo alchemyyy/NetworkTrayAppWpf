@@ -5,7 +5,7 @@ namespace NetworkTrayAppWpf.Interop;
 /// <summary>
 /// User32.dll interop declarations for window management and acrylic effects.
 /// </summary>
-internal static class User32
+internal static partial class User32
 {
     public const int WM_USER = 0x0400;
     public const int WM_CONTEXTMENU = 0x007B;
@@ -26,8 +26,9 @@ internal static class User32
     public const int SM_CXSMICON = 49;
     public const int LOGPIXELSX = 88;
 
-    [DllImport("user32.dll", PreserveSig = true)]
-    public static extern bool SetWindowPos(
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetWindowPos(
         IntPtr hWnd,
         IntPtr hWndInsertAfter,
         int x, int y, int cx, int cy,
@@ -42,35 +43,41 @@ internal static class User32
         SWP_NOACTIVATE = 0x0010,
     }
 
-    [DllImport("user32.dll", PreserveSig = true)]
-    public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    public static partial IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
 
-    [DllImport("user32.dll", PreserveSig = true)]
-    public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+    [LibraryImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    public static partial IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
-    [DllImport("user32.dll", PreserveSig = true)]
-    public static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]
-    public static extern int RegisterWindowMessage(string lpString);
-
-    [DllImport("user32.dll", PreserveSig = true)]
-    public static extern IntPtr GetDC(IntPtr hwnd);
-
-    [DllImport("user32.dll", PreserveSig = true)]
-    public static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
-
-    [DllImport("user32.dll", PreserveSig = true)]
-    public static extern int GetSystemMetricsForDpi(int nIndex, uint dpi);
-
-    [DllImport("user32.dll", PreserveSig = true)]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool DestroyIcon(IntPtr hIcon);
+    public static partial bool SetForegroundWindow(IntPtr hWnd);
 
-    [DllImport("gdi32.dll", PreserveSig = true)]
-    public static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
+    [LibraryImport("user32.dll", EntryPoint = "RegisterWindowMessageW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int RegisterWindowMessage(string lpString);
 
-    // Acrylic/composition attributes
+    [LibraryImport("user32.dll")]
+    public static partial IntPtr GetDC(IntPtr hwnd);
+
+    [LibraryImport("user32.dll")]
+    public static partial int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+
+    [LibraryImport("user32.dll")]
+    public static partial int GetSystemMetricsForDpi(int nIndex, uint dpi);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool DestroyIcon(IntPtr hIcon);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial int GetDeviceCaps(IntPtr hdc, int nIndex);
+
+    [LibraryImport("user32.dll", EntryPoint = "MessageBoxW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+
+    public const uint MB_ICONERROR = 0x10;
+
+    // Acrylic/composition attributes - keep as DllImport due to ref struct parameter
     [DllImport("user32.dll", PreserveSig = true)]
     internal static extern int SetWindowCompositionAttribute(
         IntPtr hwnd,

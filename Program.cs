@@ -7,6 +7,11 @@ namespace NetworkTrayAppWpf;
 /// </summary>
 internal static class Program
 {
+    /// <summary>
+    /// The PID of the watcher process, if running in monitored mode.
+    /// </summary>
+    public static int? WatcherPid { get; private set; }
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -28,9 +33,25 @@ internal static class Program
             return 0;
         }
 
+        // Parse watcher PID if provided
+        WatcherPid = ParseWatcherPid(args);
+
         // Normal monitored mode (or debugger attached) - run the WPF app
         App app = new();
         app.InitializeComponent();
         return app.Run();
+    }
+
+    private static int? ParseWatcherPid(string[] args)
+    {
+        for (int i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i].Equals("--watcher-pid", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(args[i + 1], out int pid))
+            {
+                return pid;
+            }
+        }
+        return null;
     }
 }

@@ -86,7 +86,7 @@ internal sealed class ShellNotifyIcon : IDisposable
     {
         return new NOTIFYICONDATAW
         {
-            cbSize = Marshal.SizeOf(typeof(NOTIFYICONDATAW)),
+            cbSize = Marshal.SizeOf<NOTIFYICONDATAW>(),
             hWnd = _window.Handle,
             uFlags = NotifyIconFlags.NIF_MESSAGE | NotifyIconFlags.NIF_ICON | NotifyIconFlags.NIF_TIP | NotifyIconFlags.NIF_SHOWTIP,
             uCallbackMessage = WM_CALLBACKMOUSEMSG,

@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
     <RootNamespace>NetworkTrayAppWpf</RootNamespace>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -18,23 +19,55 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
-  <!-- Release build optimizations: Self-contained single file (no .NET install required) -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+  <!-- Publish settings: Self-contained, trimmed single-file
+       Triggered when RuntimeIdentifier is specified (e.g., dotnet publish -r win-x64) -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <SelfContained>true</SelfContained>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishSingleFile>true</PublishSingleFile>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <PublishTrimmed>false</PublishTrimmed>
-    <PublishDir>$(OutputPath)</PublishDir>
+    <!-- Extract all content to temp - required for WPF DirectWrite COM interop -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+
+    <!-- Trimming enabled with WPF-compatible settings -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <!-- Partial trim mode: only trim assemblies that opt-in via IsTrimmable -->
+    <TrimMode>partial</TrimMode>
+    <!-- Suppress WPF and WinForms trimming errors - we preserve required assemblies manually -->
+    <_SuppressWinFormsTrimError>true</_SuppressWinFormsTrimError>
+    <_SuppressWpfTrimError>true</_SuppressWpfTrimError>
+    <!-- Suppress trim warnings for WPF assemblies (they're preserved via TrimmerRoots.xml) -->
+    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+    <!-- Enable built-in COM interop support for DirectWrite -->
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <!-- Disable feature switches that break WPF COM -->
+    <AutoreleasePoolSupport>false</AutoreleasePoolSupport>
+
+    <!-- ReadyToRun: AOT compile to native code -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
+
+    <!-- Optimize for size -->
+    <OptimizationPreference>Size</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <InvariantGlobalization>false</InvariantGlobalization>
+
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
-  <!-- Auto-publish single file on Release build -->
-  <Target Name="PublishAfterBuild" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-    <Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c Release --no-build" />
-  </Target>
+  <!-- Trimmer configuration: preserve WPF assemblies required for DirectWrite COM interop -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <!-- XML descriptor specifying types to preserve -->
+    <TrimmerRootDescriptor Include="TrimmerRoots.xml" />
+
+    <!-- Root assemblies: these will never be trimmed -->
+    <TrimmerRootAssembly Include="PresentationCore" />
+    <TrimmerRootAssembly Include="PresentationFramework" />
+    <TrimmerRootAssembly Include="WindowsBase" />
+    <TrimmerRootAssembly Include="DirectWriteForwarder" />
+    <TrimmerRootAssembly Include="System.Xaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
@@ -52,4 +85,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <!-- Auto-publish AOT single-file after Release build in VS -->
+  <Target Name="PublishAfterBuild" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and '$(RuntimeIdentifier)' == ''">
+    <Message Importance="High" Text="Publishing single-file executable..." />
+    <Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c Release -r win-x64 -o &quot;$(OutputPath)&quot;" />
+    <Message Importance="High" Text="Published to $(OutputPath)NetworkTrayAppWpf.exe" />
+  </Target>
 </Project>

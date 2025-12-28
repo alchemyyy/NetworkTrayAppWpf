@@ -5,7 +5,7 @@ namespace NetworkTrayAppWpf.Interop;
 /// <summary>
 /// Shell32.dll interop declarations for system tray notification icons.
 /// </summary>
-internal static class Shell32
+internal static partial class Shell32
 {
     public static readonly int WM_TASKBARCREATED = User32.RegisterWindowMessage("TaskbarCreated");
 
@@ -32,12 +32,14 @@ internal static class Shell32
         NIN_POPUPCLOSE = 0x407,
     }
 
+    // Keep as DllImport due to ref struct with ByValTStr
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool Shell_NotifyIconW(
         NotifyIconMessage message,
         ref NOTIFYICONDATAW pNotifyIconData);
 
+    // Keep as DllImport due to out struct parameter
     [DllImport("shell32.dll", PreserveSig = true)]
     public static extern int Shell_NotifyIconGetRect(
         ref NOTIFYICONIDENTIFIER identifier,

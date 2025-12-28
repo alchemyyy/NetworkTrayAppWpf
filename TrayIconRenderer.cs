@@ -17,9 +17,11 @@ public sealed class TrayIconRenderer(AppSettings settings) : IDisposable
     private Icon? _currentIcon;
     private bool _disposed;
 
-    // Icon font families
-    private static readonly Typeface SegoeFluent = new(new System.Windows.Media.FontFamily("Segoe Fluent Icons"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-    private static readonly Typeface SegoeMDL2 = new(new System.Windows.Media.FontFamily("Segoe MDL2 Assets"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+    // Icon font families - lazy init to avoid static constructor COM issues with trimming
+    private static Typeface? _segoeFluent;
+    private static Typeface? _segoeMDL2;
+    private static Typeface SegoeFluent => _segoeFluent ??= new(new System.Windows.Media.FontFamily("Segoe Fluent Icons"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+    private static Typeface SegoeMDL2 => _segoeMDL2 ??= new(new System.Windows.Media.FontFamily("Segoe MDL2 Assets"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
     private static readonly bool IsWindows11 = Environment.OSVersion.Version.Build >= 22000;
 
     // Backdrop opacity for "unfilled" bars effect
@@ -177,7 +179,7 @@ public sealed class TrayIconRenderer(AppSettings settings) : IDisposable
 
         // Clone the icon so we can destroy the handle
         Icon clonedIcon = (Icon)icon.Clone();
-        DestroyIcon(hIcon);
+        Interop.User32.DestroyIcon(hIcon);
 
         return clonedIcon;
     }
@@ -257,11 +259,11 @@ public sealed class TrayIconRenderer(AppSettings settings) : IDisposable
         try
         {
             // Try to get DPI from the primary monitor
-            IntPtr hdc = GetDC(IntPtr.Zero);
+            IntPtr hdc = Interop.User32.GetDC(IntPtr.Zero);
             if (hdc != IntPtr.Zero)
             {
-                int dpi = GetDeviceCaps(hdc, LOGPIXELSX);
-                ReleaseDC(IntPtr.Zero, hdc);
+                int dpi = Interop.User32.GetDeviceCaps(hdc, Interop.User32.LOGPIXELSX);
+                Interop.User32.ReleaseDC(IntPtr.Zero, hdc);
                 return (uint)dpi;
             }
         }
@@ -280,7 +282,7 @@ public sealed class TrayIconRenderer(AppSettings settings) : IDisposable
         // SM_CXSMICON (49) is the small icon width metric
         try
         {
-            return GetSystemMetricsForDpi(SM_CXSMICON, dpi);
+            return Interop.User32.GetSystemMetricsForDpi(Interop.User32.SM_CXSMICON, dpi);
         }
         catch
         {
@@ -289,29 +291,6 @@ public sealed class TrayIconRenderer(AppSettings settings) : IDisposable
             return (int)(16 * dpi / 96.0);
         }
     }
-
-    #endregion
-
-    #region Native Methods
-
-    private const int SM_CXSMICON = 49;
-    private const int LOGPIXELSX = 88;
-
-    [DllImport("user32.dll")]
-    private static extern int GetSystemMetricsForDpi(int nIndex, uint dpi);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetDC(IntPtr hwnd);
-
-    [DllImport("user32.dll")]
-    private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
-
-    [DllImport("gdi32.dll")]
-    private static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DestroyIcon(IntPtr hIcon);
 
     #endregion
 

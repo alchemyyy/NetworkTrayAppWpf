@@ -23,6 +23,7 @@ public partial class App
     private SettingsFlyout? _settingsFlyout;
     private ThemeColorManager? _themeManager;
     private ContextMenu? _contextMenu;
+    private CancellationTokenSource? _watcherMonitorCts;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -67,6 +68,56 @@ public partial class App
         _refreshTimer.Start();
 
         UpdateTrayIcon();
+
+        // Start monitoring watcher process if we're running in monitored mode
+        StartWatcherMonitor();
+    }
+
+    /// <summary>
+    /// Monitors the watcher process and exits if it dies.
+    /// This ensures the app doesn't run orphaned if the watcher is killed.
+    /// </summary>
+    private void StartWatcherMonitor()
+    {
+        if (Program.WatcherPid is not int watcherPid)
+            return;
+
+        _watcherMonitorCts = new CancellationTokenSource();
+        var token = _watcherMonitorCts.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var watcherProcess = Process.GetProcessById(watcherPid);
+
+                // Wait for the watcher to exit
+                while (!token.IsCancellationRequested)
+                {
+                    if (watcherProcess.HasExited)
+                    {
+                        // Watcher died - exit gracefully
+                        await Dispatcher.InvokeAsync(() => ExitApplication());
+                        return;
+                    }
+
+                    await Task.Delay(1000, token);
+                }
+            }
+            catch (ArgumentException)
+            {
+                // Process doesn't exist - watcher already dead, exit immediately
+                await Dispatcher.InvokeAsync(() => ExitApplication());
+            }
+            catch (OperationCanceledException)
+            {
+                // Normal cancellation during shutdown
+            }
+            catch
+            {
+                // Ignore other errors
+            }
+        }, token);
     }
 
     private void CreateTrayIcon()
@@ -315,6 +366,12 @@ public partial class App
 
         // Refresh icon in case colors changed
         UpdateTrayIcon();
+
+        // Schedule aggressive GC after settings UI objects are no longer referenced
+        _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ =>
+        {
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: false, compacting: true);
+        }, TaskScheduler.Default);
     }
 
     private void OpenAdapterSettings()
@@ -353,6 +410,7 @@ public partial class App
 
     private void ExitApplication()
     {
+        _watcherMonitorCts?.Cancel();
         _refreshTimer?.Stop();
         SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         _themeManager?.Dispose();

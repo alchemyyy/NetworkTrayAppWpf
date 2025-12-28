@@ -5,6 +5,20 @@ using System.Text.Json.Serialization;
 
 namespace NetworkTrayAppWpf;
 
+/// <summary>
+/// Source-generated JSON serializer context for trim-safe serialization.
+/// </summary>
+[JsonSourceGenerationOptions(
+    WriteIndented = true,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    UseStringEnumConverter = true)]
+[JsonSerializable(typeof(AppSettings))]
+[JsonSerializable(typeof(IconSettings))]
+[JsonSerializable(typeof(TraySettings))]
+[JsonSerializable(typeof(FlyoutStyle))]
+[JsonSerializable(typeof(AdapterSettingsStyle))]
+internal partial class AppSettingsJsonContext : JsonSerializerContext;
+
 public sealed class AppSettings
 {
     public IconSettings Icon { get; set; } = new();
@@ -14,13 +28,6 @@ public sealed class AppSettings
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "NetworkTrayIcon");
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter() }
-    };
-
     public static AppSettings Load()
     {
         try
@@ -28,7 +35,7 @@ public sealed class AppSettings
             if (File.Exists(SettingsFilePath))
             {
                 string json = File.ReadAllText(SettingsFilePath);
-                return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+                return JsonSerializer.Deserialize(json, AppSettingsJsonContext.Default.AppSettings) ?? new AppSettings();
             }
         }
         catch
@@ -70,7 +77,7 @@ public sealed class AppSettings
         try
         {
             Directory.CreateDirectory(SettingsFolder);
-            string json = JsonSerializer.Serialize(this, JsonOptions);
+            string json = JsonSerializer.Serialize(this, AppSettingsJsonContext.Default.AppSettings);
             File.WriteAllText(SettingsFilePath, json);
         }
         catch
