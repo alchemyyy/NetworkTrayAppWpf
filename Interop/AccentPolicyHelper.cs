@@ -19,7 +19,7 @@ internal static class AccentPolicyHelper
         IntPtr handle = new WindowInteropHelper(window).Handle;
         if (handle == IntPtr.Zero) return;
 
-        var policy = new User32.AccentPolicy
+        User32.AccentPolicy policy = new()
         {
             AccentFlags = flags,
             AccentState = AccentPolicySupportsTintColor
@@ -36,7 +36,7 @@ internal static class AccentPolicyHelper
         IntPtr handle = new WindowInteropHelper(window).Handle;
         if (handle == IntPtr.Zero) return;
 
-        var policy = new User32.AccentPolicy
+        User32.AccentPolicy policy = new()
         {
             AccentState = User32.AccentState.ACCENT_DISABLED,
         };
@@ -53,7 +53,7 @@ internal static class AccentPolicyHelper
         {
             Marshal.StructureToPtr(policy, accentPtr, false);
 
-            var data = new User32.WindowCompositionAttribData
+            User32.WindowCompositionAttribData data = new()
             {
                 Attribute = User32.WindowCompositionAttribute.WCA_ACCENT_POLICY,
                 SizeOfData = accentStructSize,

@@ -134,7 +134,7 @@ internal static class CrashHandler
 
         // Use cmd.exe /c start to launch a truly independent process
         // The empty quotes after start are for the window title
-        ProcessStartInfo startInfo = new ProcessStartInfo
+        ProcessStartInfo startInfo = new()
         {
             FileName = "cmd.exe",
             Arguments = $"/c start \"\" \"{exePath}\" --watcher",
@@ -145,14 +145,15 @@ internal static class CrashHandler
 
         try
         {
-            Process.Start(startInfo);
+            // Dispose the Process object returned by Start - we don't need to track it
+            using Process? cmdProcess = Process.Start(startInfo);
         }
         catch
         {
             // If cmd.exe approach fails, try direct launch (will be a child process but still works)
             try
             {
-                Process.Start(new ProcessStartInfo
+                using Process? watcherProcess = Process.Start(new ProcessStartInfo
                 {
                     FileName = exePath,
                     Arguments = "--watcher",
@@ -174,7 +175,7 @@ internal static class CrashHandler
             // Pass watcher PID so monitored app can exit if watcher dies
             int watcherPid = Environment.ProcessId;
 
-            ProcessStartInfo startInfo = new ProcessStartInfo
+            ProcessStartInfo startInfo = new()
             {
                 FileName = exePath,
                 Arguments = $"--monitored --watcher-pid {watcherPid}",

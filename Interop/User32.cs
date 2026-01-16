@@ -77,6 +77,16 @@ internal static partial class User32
 
     public const uint MB_ICONERROR = 0x10;
 
+    [LibraryImport("user32.dll", EntryPoint = "FindWindowW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial IntPtr FindWindow(string? lpClassName, string? lpWindowName);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsWindow(IntPtr hWnd);
+
+    [LibraryImport("user32.dll")]
+    public static partial uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
     // Acrylic/composition attributes - keep as DllImport due to ref struct parameter
     [DllImport("user32.dll", PreserveSig = true)]
     internal static extern int SetWindowCompositionAttribute(

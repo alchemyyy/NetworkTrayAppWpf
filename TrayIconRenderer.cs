@@ -1,6 +1,4 @@
-using System.Drawing;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -20,8 +18,8 @@ public sealed class TrayIconRenderer(AppSettings settings) : IDisposable
     // Icon font families - lazy init to avoid static constructor COM issues with trimming
     private static Typeface? _segoeFluent;
     private static Typeface? _segoeMDL2;
-    private static Typeface SegoeFluent => _segoeFluent ??= new(new System.Windows.Media.FontFamily("Segoe Fluent Icons"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-    private static Typeface SegoeMDL2 => _segoeMDL2 ??= new(new System.Windows.Media.FontFamily("Segoe MDL2 Assets"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+    private static Typeface SegoeFluent => _segoeFluent ??= new Typeface(new System.Windows.Media.FontFamily("Segoe Fluent Icons"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+    private static Typeface SegoeMDL2 => _segoeMDL2 ??= new Typeface(new System.Windows.Media.FontFamily("Segoe MDL2 Assets"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
     private static readonly bool IsWindows11 = Environment.OSVersion.Version.Build >= 22000;
 
     // Backdrop opacity for "unfilled" bars effect
@@ -131,8 +129,10 @@ public sealed class TrayIconRenderer(AppSettings settings) : IDisposable
         RenderTargetBitmap rtb = new(size, size, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(visual);
 
-        // Convert to Icon
-        return BitmapToIcon(rtb);
+        // Convert to Icon and clear RenderTargetBitmap to release memory
+        Icon icon = BitmapToIcon(rtb);
+        rtb.Clear();
+        return icon;
     }
 
     /// <summary>
@@ -175,13 +175,17 @@ public sealed class TrayIconRenderer(AppSettings settings) : IDisposable
 
         // Create icon from bitmap
         IntPtr hIcon = bitmap.GetHicon();
-        Icon icon = Icon.FromHandle(hIcon);
-
-        // Clone the icon so we can destroy the handle
-        Icon clonedIcon = (Icon)icon.Clone();
-        Interop.User32.DestroyIcon(hIcon);
-
-        return clonedIcon;
+        try
+        {
+            // Use Icon.FromHandle then clone - the clone owns its own handle
+            using Icon tempIcon = Icon.FromHandle(hIcon);
+            return (Icon)tempIcon.Clone();
+        }
+        finally
+        {
+            // Always destroy the original GDI handle to prevent handle leak
+            Interop.User32.DestroyIcon(hIcon);
+        }
     }
 
     /// <summary>

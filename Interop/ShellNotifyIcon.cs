@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using Point = System.Windows.Point;
 
 namespace NetworkTrayAppWpf.Interop;
 
@@ -72,6 +73,8 @@ internal sealed class ShellNotifyIcon : IDisposable
 
     public void SetIcon(Icon icon)
     {
+        // Note: The icon is owned by the caller (TrayIconRenderer), which manages disposal.
+        // We just store the reference here; TrayIconRenderer disposes the old icon when creating a new one.
         _currentIcon = icon;
         Update();
     }
@@ -99,7 +102,7 @@ internal sealed class ShellNotifyIcon : IDisposable
     {
         if (_disposed) return;
 
-        var data = MakeData();
+        NOTIFYICONDATAW data = MakeData();
 
         if (_isVisible)
         {
@@ -161,7 +164,7 @@ internal sealed class ShellNotifyIcon : IDisposable
 
             case User32.WM_RBUTTONUP:
             case User32.WM_CONTEXTMENU:
-                var point = new System.Windows.Point(
+                Point point = new(
                     (short)msg.WParam.ToInt32(),
                     msg.WParam.ToInt32() >> 16);
                 RightClick?.Invoke(point);
@@ -271,10 +274,16 @@ internal sealed class ShellNotifyIcon : IDisposable
         if (_disposed) return;
         _disposed = true;
 
+        // Stop and unsubscribe timer to prevent leaks
         _iconUpdateTimer.Stop();
+        _iconUpdateTimer.Tick -= OnIconUpdateTimerTick;
+
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
 
         IsVisible = false;
         _window.Dispose();
+
+        // Clear reference (icon is owned by TrayIconRenderer)
+        _currentIcon = null;
     }
 }

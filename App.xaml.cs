@@ -64,7 +64,7 @@ public partial class App
         {
             Interval = TimeSpan.FromSeconds(3)
         };
-        _refreshTimer.Tick += (_, _) => _networkMonitor?.RefreshState();
+        _refreshTimer.Tick += OnRefreshTimerTick;
         _refreshTimer.Start();
 
         UpdateTrayIcon();
@@ -83,13 +83,13 @@ public partial class App
             return;
 
         _watcherMonitorCts = new CancellationTokenSource();
-        var token = _watcherMonitorCts.Token;
+        CancellationToken token = _watcherMonitorCts.Token;
 
         _ = Task.Run(async () =>
         {
             try
             {
-                using var watcherProcess = Process.GetProcessById(watcherPid);
+                using Process watcherProcess = Process.GetProcessById(watcherPid);
 
                 // Wait for the watcher to exit
                 while (!token.IsCancellationRequested)
@@ -256,6 +256,11 @@ public partial class App
         Resources["ThemeAccent"] = new SolidColorBrush(ThemeColorManager.Accent);
     }
 
+    private void OnRefreshTimerTick(object? sender, EventArgs e)
+    {
+        _networkMonitor?.RefreshState();
+    }
+
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)
     {
         // Display settings changed - update icon
@@ -370,7 +375,7 @@ public partial class App
         // Schedule aggressive GC after settings UI objects are no longer referenced
         _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ =>
         {
-            GC.Collect(2, GCCollectionMode.Aggressive, blocking: false, compacting: true);
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
         }, TaskScheduler.Default);
     }
 
@@ -383,23 +388,12 @@ public partial class App
             switch (style)
             {
                 case AdapterSettingsStyle.Explorer:
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "explorer.exe",
-                        Arguments = "shell:::{7007ACC7-3202-11D1-AAD2-00805FC1270E}",
-                        UseShellExecute = true
-                    });
+                    AdapterSettingsShellProcessMonitor.OpenAndMonitorExplorerShell();
                     break;
 
                 case AdapterSettingsStyle.ControlPanel:
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "ncpa.cpl",
-                        UseShellExecute = true
-                    });
+                    AdapterSettingsShellProcessMonitor.OpenAndMonitorControlPanel();
                     break;
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
         }
         catch
@@ -410,13 +404,53 @@ public partial class App
 
     private void ExitApplication()
     {
+        // Cancel and dispose CancellationTokenSource
         _watcherMonitorCts?.Cancel();
-        _refreshTimer?.Stop();
+        _watcherMonitorCts?.Dispose();
+        _watcherMonitorCts = null;
+
+        // Stop timer and unsubscribe tick event to prevent leaks
+        if (_refreshTimer != null)
+        {
+            _refreshTimer.Stop();
+            _refreshTimer.Tick -= OnRefreshTimerTick;
+            _refreshTimer = null;
+        }
+
+        // Unsubscribe from system events
         SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
-        _themeManager?.Dispose();
-        _networkMonitor?.Dispose();
+
+        // Unsubscribe from theme changes before disposing
+        if (_themeManager != null)
+        {
+            _themeManager.ThemeChanged -= OnThemeChanged;
+            _themeManager.Dispose();
+            _themeManager = null;
+        }
+
+        // Unsubscribe from network state changes before disposing
+        if (_networkMonitor != null)
+        {
+            _networkMonitor.NetworkStateChanged -= OnNetworkStateChanged;
+            _networkMonitor.Dispose();
+            _networkMonitor = null;
+        }
+
+        // Unsubscribe tray icon events before disposing
+        if (_trayIcon != null)
+        {
+            _trayIcon.LeftClick -= OnTrayLeftClick;
+            _trayIcon.RightClick -= OnTrayRightClick;
+            _trayIcon.Dispose();
+            _trayIcon = null;
+        }
+
         _iconRenderer?.Dispose();
-        _trayIcon?.Dispose();
+        _iconRenderer = null;
+
+        // Clear context menu reference
+        _contextMenu = null;
+
         Shutdown(0);
     }
 }

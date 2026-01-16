@@ -78,6 +78,9 @@ public partial class SettingsFlyout : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        // Unsubscribe to prevent memory leak (Loaded only fires once)
+        Loaded -= OnLoaded;
+
         PositionWindow();
         LoadCurrentSettings();
         _isInitializing = false;
