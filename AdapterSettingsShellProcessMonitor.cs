@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Management;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -106,18 +105,13 @@ internal static class AdapterSettingsShellProcessMonitor
     {
         try
         {
-            using ManagementObjectSearcher searcher = new(
-                $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {pid}");
-            foreach (ManagementBaseObject obj in searcher.Get())
+            string? cmdLine = GetProcessCommandLine(pid);
+            if (cmdLine != null)
             {
-                string? cmdLine = obj["CommandLine"]?.ToString();
-                if (cmdLine != null)
+                foreach (string factoryCmd in ExplorerFactoryCommandLines)
                 {
-                    foreach (string factoryCmd in ExplorerFactoryCommandLines)
-                    {
-                        if (cmdLine.Contains(factoryCmd, StringComparison.OrdinalIgnoreCase))
-                            return true;
-                    }
+                    if (cmdLine.Contains(factoryCmd, StringComparison.OrdinalIgnoreCase))
+                        return true;
                 }
             }
         }
@@ -128,6 +122,48 @@ internal static class AdapterSettingsShellProcessMonitor
         return false;
     }
 
+    private static unsafe string? GetProcessCommandLine(int pid)
+    {
+        nint hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, false, (uint)pid);
+        if (hProcess == 0)
+            return null;
+
+        try
+        {
+            // Get PEB address from process basic information
+            PROCESS_BASIC_INFORMATION pbi;
+            int status = NtQueryInformationProcess(hProcess, 0, &pbi, sizeof(PROCESS_BASIC_INFORMATION), out _);
+            if (status != 0)
+                return null;
+
+            // Read PEB to get ProcessParameters address
+            PEB peb;
+            if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, (nuint)sizeof(PEB), out _))
+                return null;
+
+            // Read RTL_USER_PROCESS_PARAMETERS to get command line
+            RTL_USER_PROCESS_PARAMETERS processParams;
+            if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &processParams, (nuint)sizeof(RTL_USER_PROCESS_PARAMETERS), out _))
+                return null;
+
+            // Read the command line string
+            if (processParams.CommandLine.Length == 0 || processParams.CommandLine.Buffer == 0)
+                return null;
+
+            int byteLen = processParams.CommandLine.Length;
+            char* buffer = stackalloc char[byteLen / 2 + 1];
+            if (!ReadProcessMemory(hProcess, (void*)processParams.CommandLine.Buffer, buffer, (nuint)byteLen, out _))
+                return null;
+
+            buffer[byteLen / 2] = '\0';
+            return new string(buffer);
+        }
+        finally
+        {
+            CloseHandle(hProcess);
+        }
+    }
+
     #region P/Invoke
 
     private const uint EVENT_OBJECT_CREATE = 0x8000;
@@ -136,6 +172,8 @@ internal static class AdapterSettingsShellProcessMonitor
     private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
     private const uint WM_QUIT = 0x0012;
     private const int OBJID_WINDOW = 0;
+    private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    private const uint PROCESS_VM_READ = 0x0010;
 
     private delegate void WinEventDelegate(
         IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject,
@@ -172,6 +210,71 @@ internal static class AdapterSettingsShellProcessMonitor
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+    [DllImport("kernel32.dll")]
+    private static extern nint OpenProcess(uint dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, uint dwProcessId);
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(nint hObject);
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern unsafe bool ReadProcessMemory(nint hProcess, void* lpBaseAddress, void* lpBuffer, nuint nSize, out nuint lpNumberOfBytesRead);
+
+    [DllImport("ntdll.dll")]
+    private static extern unsafe int NtQueryInformationProcess(nint ProcessHandle, int ProcessInformationClass, void* ProcessInformation, int ProcessInformationLength, out int ReturnLength);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PROCESS_BASIC_INFORMATION
+    {
+        public nint Reserved1;
+        public unsafe void* PebBaseAddress;
+        public nint Reserved2_0;
+        public nint Reserved2_1;
+        public nint UniqueProcessId;
+        public nint Reserved3;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PEB
+    {
+        public byte Reserved1_0;
+        public byte Reserved1_1;
+        public byte BeingDebugged;
+        public byte Reserved2;
+        public nint Reserved3_0;
+        public nint Reserved3_1;
+        public unsafe void* Ldr;
+        public unsafe void* ProcessParameters;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RTL_USER_PROCESS_PARAMETERS
+    {
+        public uint MaximumLength;
+        public uint Length;
+        public uint Flags;
+        public uint DebugFlags;
+        public nint ConsoleHandle;
+        public uint ConsoleFlags;
+        public nint StandardInput;
+        public nint StandardOutput;
+        public nint StandardError;
+        public UNICODE_STRING CurrentDirectory_DosPath;
+        public nint CurrentDirectory_Handle;
+        public UNICODE_STRING DllPath;
+        public UNICODE_STRING ImagePathName;
+        public UNICODE_STRING CommandLine;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct UNICODE_STRING
+    {
+        public ushort Length;
+        public ushort MaximumLength;
+        public nint Buffer;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MSG
