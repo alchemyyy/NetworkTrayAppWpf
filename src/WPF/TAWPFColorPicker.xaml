@@ -1,0 +1,495 @@
+<Window
+    x:Class="NetworkTrayAppWPF.WPF.TAWPFColorPicker"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+    xmlns:utils="clr-namespace:NetworkTrayAppWPF.WPF.Utils"
+    xmlns:loc="clr-namespace:NetworkTrayAppWPF.Localization"
+    utils:KeyboardFocusBehavior.EnableKeyboardOnlyFocus="True"
+    utils:KeyboardFocusBehavior.FocusStyle="{StaticResource KeyboardFocusVisualStyle}"
+    Title="{loc:Loc ColorPicker_DefaultTitle}"
+    Width="408"
+    SizeToContent="Height"
+    MinWidth="200"
+    Background="{DynamicResource ThemeBackground}"
+    Foreground="{DynamicResource ThemeForeground}"
+    WindowStyle="None"
+    ResizeMode="NoResize"
+    WindowStartupLocation="CenterOwner"
+    ShowInTaskbar="False"
+    TextElement.FontFamily="Segoe UI Variable, Segoe UI"
+    TextOptions.TextFormattingMode="Ideal"
+    TextOptions.TextRenderingMode="ClearType"
+    UseLayoutRounding="True">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="32"
+                            ResizeBorderThickness="0"
+                            CornerRadius="0"
+                            GlassFrameThickness="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <!-- ChannelSliderProgressButtonStyle / ChannelSliderTrackButtonStyle / ChannelSliderThumbStyle:
+             Slim 4px-thick track, ThemeSliderTrack / ThemeSliderProgress brushes, capsule thumb.
+             Vertical orientation for stacking R / G / B columns side-by-side. -->
+        <Style x:Key="ChannelSliderProgressButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Background" Value="{DynamicResource ThemeSliderProgress}"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{TemplateBinding Background}"
+                                Width="4"
+                                CornerRadius="{DynamicResource CornerRadiusSmall}"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ChannelSliderTrackButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{TemplateBinding Background}" Width="4"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ChannelSliderThumbStyle" TargetType="Thumb">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Width="22"
+                                Height="10"
+                                CornerRadius="{DynamicResource CornerRadiusCapsule}"
+                                Background="{DynamicResource ThemeSliderThumb}"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ChannelSliderStyle" TargetType="Slider">
+            <Setter Property="Orientation" Value="Vertical"/>
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="Maximum" Value="255"/>
+            <Setter Property="Width" Value="22"/>
+            <!-- Click-to-position is handled in code (ChannelSlider_PreviewMouseLeftButtonDown) so it can also
+                 capture mouse for the subsequent drag - WPF's native IsMoveToPointEnabled does the click-jump
+                 but doesn't catch the drag, which is the symptom we're fixing. -->
+            <Setter Property="IsMoveToPointEnabled" Value="False"/>
+            <Setter Property="IsSnapToTickEnabled" Value="False"/>
+            <Setter Property="SmallChange" Value="1"/>
+            <Setter Property="LargeChange" Value="16"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="utils:KeyboardFocusBehavior.ShowKeyboardFocus" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid>
+                            <!-- Invisible expanded hit area -->
+                            <Rectangle Fill="Transparent" Width="22"/>
+                            <!-- Visual track background -->
+                            <Border Width="4"
+                                    Background="{DynamicResource ThemeSliderTrack}"
+                                    CornerRadius="{DynamicResource CornerRadiusSmall}"
+                                    HorizontalAlignment="Center"
+                                    IsHitTestVisible="False"/>
+                            <Track x:Name="PART_Track" HorizontalAlignment="Center">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource ChannelSliderTrackButtonStyle}"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ChannelSliderThumbStyle}"/>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource ChannelSliderProgressButtonStyle}"/>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Channel-column scaffolding: top value label + slider + bottom channel label.
+             Pulled into a re-usable style so the R/G/B columns stay in lockstep.
+             Width is pinned to the slider's 22pt so the Auto column never grows past it as the
+             value text shifts between 1, 2 and 3 digits. Wider text (e.g. "255") overflows the
+             box visually into the neighbouring 14pt gap, but the layout column stays stable -
+             nothing else on the row shifts as the number changes. -->
+        <Style x:Key="ChannelColumnLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource SettingTitleStyle}">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="ChannelColumnFooterStyle" TargetType="TextBlock" BasedOn="{StaticResource SettingTitleStyle}">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
+        </Style>
+
+        <!-- Hue / alpha slider primitives. Same Slider chassis as the R/G/B columns so the
+             channel-slider mouse / wheel / keyboard handlers (WireChannelSliderEvents) cover hue and
+             alpha for free; the only differences are the wide gradient bar instead of a 4pt track and
+             a horizontal-spanning grip thumb (6pt tall) instead of the capsule. The thumb's fill flows
+             through Slider.Foreground (TemplateBinding chain: Track.Thumb Background = Foreground,
+             Thumb template Border Background = Background) so code can mutate the swatch the user sees
+             on the grip without hunting through the visual tree. -->
+        <Style x:Key="HueAlphaSliderTrackButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{TemplateBinding Background}"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HueAlphaSliderThumbStyle" TargetType="Thumb">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border CornerRadius="{DynamicResource CornerRadiusSmall}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                Height="8"
+                                Background="{TemplateBinding Background}"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HueAlphaSliderStyle" TargetType="Slider">
+            <Setter Property="Orientation" Value="Vertical"/>
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="IsMoveToPointEnabled" Value="False"/>
+            <Setter Property="IsSnapToTickEnabled" Value="False"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="utils:KeyboardFocusBehavior.ShowKeyboardFocus" Value="True"/>
+            <!-- BorderBrush feeds the THUMB border, not the slider's outer chrome (the chrome uses a
+                 hardcoded ThemeBorder DynamicResource). Default value matches the original themed
+                 stroke; alpha slider overrides it with a luminance-inverted brush so the grip stays
+                 visible against any rgb fill. -->
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeForeground}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{DynamicResource ThemeBorder}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource CornerRadiusMedium}">
+                            <Track x:Name="PART_Track"
+                                   IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource HueAlphaSliderTrackButtonStyle}"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource HueAlphaSliderThumbStyle}"
+                                           Background="{TemplateBinding Foreground}"
+                                           BorderBrush="{TemplateBinding BorderBrush}"/>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource HueAlphaSliderTrackButtonStyle}"/>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.5"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder"
+            Background="{DynamicResource ThemeBackground}"
+            BorderBrush="{DynamicResource ThemeBorder}"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="32"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- TITLE BAR -->
+            <Grid Grid.Row="0" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           x:Name="TitleText"
+                           Text="{loc:Loc ColorPicker_DefaultTitle}"
+                           Foreground="{DynamicResource ThemeForeground}"
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"
+                           FontSize="14"/>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button x:Name="CloseButton"
+                            Style="{StaticResource CaptionCloseButtonStyle}"
+                            Click="Close_Click"
+                            Content="&#xE8BB;"
+                            ToolTip="{loc:Loc ColorPicker_CloseTooltip}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- BODY -->
+            <!-- IsSharedSizeScope lets the bottom grid's column definitions (below) match the picker
+                 grid's column widths via SharedSizeGroup. That's how Apply / Reset stay aligned with
+                 the bar / slider columns above them - no code-behind, no hardcoded summations. -->
+            <Grid Grid.Row="1" Margin="20,12,20,16" Grid.IsSharedSizeScope="True">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="16"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- ROW 0: free pick + hue / alpha bars + R / G / B sliders.
+                     Three rows: value labels (R/G/B numerics) / bars + sliders / channel labels.
+                     Row 1 is the bar/slider band, fixed in points so the layout is independent of
+                     font metrics. FreePickArea + hue/alpha bars span rows 0+1 (auto-stretch tall),
+                     so they rise up into the value-label row alongside the R/G/B numerics; the
+                     R/G/B sliders themselves only fill row 1 because their numerics live above them. -->
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="120"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <!-- SharedSizeGroup names let the bottom grid below mirror these widths exactly,
+                         so Apply / Reset under the slider columns track them as the user resizes
+                         the window or as font metrics change the Auto cols. -->
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160"  SharedSizeGroup="PickerC0"/>
+                        <ColumnDefinition Width="16"   SharedSizeGroup="PickerC1"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC2"/>
+                        <ColumnDefinition Width="8"    SharedSizeGroup="PickerC3"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC4"/>
+                        <ColumnDefinition Width="14"   SharedSizeGroup="PickerC5"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC6"/>
+                        <ColumnDefinition Width="14"   SharedSizeGroup="PickerC7"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC8"/>
+                        <ColumnDefinition Width="14"   SharedSizeGroup="PickerC9"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC10"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Value labels above R / G / B sliders (row 0). Hue / Alpha / FreePick have nothing here. -->
+                    <TextBlock Grid.Row="0" Grid.Column="6" x:Name="RValueLabel" Text="0" Style="{StaticResource ChannelColumnLabelStyle}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="8" x:Name="GValueLabel" Text="0" Style="{StaticResource ChannelColumnLabelStyle}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="10" x:Name="BValueLabel" Text="0" Style="{StaticResource ChannelColumnLabelStyle}"/>
+
+                    <!-- Free-pick saturation/value plane. The outer Border's Background is the pure-hue layer
+                         (HSV with S=V=1) and is updated in code as the picker's hue changes. Two inner Borders
+                         with matching CornerRadius layer the saturation gradient (white -> transparent across X)
+                         and the value gradient (transparent -> black down Y); together they paint the standard
+                         HSV picker plane. The Canvas on top hosts a draggable position indicator (two ellipses,
+                         black outer + white inner) so it stays visible against any background color, with the
+                         inner ellipse filled with the current color as a live swatch.
+                         Spans rows 0+1 so the area grows upward into the value-label row, putting it
+                         at the same vertical extent as the R/G/B numeric value text in the columns to the right. -->
+                    <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                            x:Name="FreePickArea"
+                            BorderBrush="{DynamicResource ThemeBorder}"
+                            BorderThickness="1"
+                            CornerRadius="{DynamicResource CornerRadiusLarge}"
+                            Background="Red"
+                            SizeChanged="FreePickArea_SizeChanged"
+                            MouseLeftButtonDown="FreePickArea_MouseLeftButtonDown"
+                            MouseMove="FreePickArea_MouseMove"
+                            MouseLeftButtonUp="FreePickArea_MouseLeftButtonUp">
+                        <Grid>
+                            <Border CornerRadius="{DynamicResource CornerRadiusLarge}" IsHitTestVisible="False">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Offset="0" Color="#FFFFFFFF"/>
+                                        <GradientStop Offset="1" Color="#00FFFFFF"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            <Border CornerRadius="{DynamicResource CornerRadiusLarge}" IsHitTestVisible="False">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Offset="0" Color="#00000000"/>
+                                        <GradientStop Offset="1" Color="#FF000000"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            <Canvas x:Name="FreePickCanvas" IsHitTestVisible="False">
+                                <Ellipse x:Name="FreePickIndicatorRing"
+                                         Width="16" Height="16"
+                                         Stroke="Black"
+                                         StrokeThickness="1"
+                                         Fill="Transparent"
+                                         IsHitTestVisible="False"/>
+                                <Ellipse x:Name="FreePickIndicator"
+                                         Width="14" Height="14"
+                                         Stroke="White"
+                                         StrokeThickness="1"
+                                         IsHitTestVisible="False"/>
+                            </Canvas>
+                        </Grid>
+                    </Border>
+
+                    <!-- Hue / alpha sliders span rows 0+1 too, so they reach up to the value-label row
+                         and visually line up with the FreePickArea + R/G/B numeric value text.
+                         Hue: bottom = red (low spectrum frequency) climbing to violet/red at the top
+                         (high frequency). Min/Max in degrees so the slider value is the hue directly.
+                         Alpha: bottom = full opacity, top = transparent; IsDirectionReversed flips
+                         the standard top-is-Max layout so alpha 255 sits at the bottom of the bar.
+                         The alpha gradient stops are constructed in code (UpdateAlphaGradient) since
+                         their colors track the current rgb. -->
+                    <Slider Grid.Row="0" Grid.RowSpan="2" Grid.Column="2"
+                            x:Name="HueSlider" Tag="H"
+                            Style="{StaticResource HueAlphaSliderStyle}"
+                            Minimum="0" Maximum="360" SmallChange="1" LargeChange="30">
+                        <Slider.Background>
+                            <LinearGradientBrush StartPoint="0,1" EndPoint="0,0">
+                                <GradientStop Offset="0.000" Color="#FFFF0000"/>
+                                <GradientStop Offset="0.167" Color="#FFFFFF00"/>
+                                <GradientStop Offset="0.333" Color="#FF00FF00"/>
+                                <GradientStop Offset="0.500" Color="#FF00FFFF"/>
+                                <GradientStop Offset="0.667" Color="#FF0000FF"/>
+                                <GradientStop Offset="0.833" Color="#FFFF00FF"/>
+                                <GradientStop Offset="1.000" Color="#FFFF0000"/>
+                            </LinearGradientBrush>
+                        </Slider.Background>
+                    </Slider>
+                    <Slider Grid.Row="0" Grid.RowSpan="2" Grid.Column="4"
+                            x:Name="AlphaSlider" Tag="A"
+                            Style="{StaticResource HueAlphaSliderStyle}"
+                            Minimum="0" Maximum="255" SmallChange="1" LargeChange="16"
+                            IsDirectionReversed="True"/>
+                    <!-- Sliders fill row 1 (the bar/slider band) - no explicit Height, so changing the
+                         row 1 height in one place re-flows everything. Tag carries the channel name
+                         so a single set of mouse / value-changed handlers in the code-behind covers all three. -->
+                    <Slider Grid.Row="1" Grid.Column="6" x:Name="RSlider" Tag="R" Style="{StaticResource ChannelSliderStyle}"/>
+                    <Slider Grid.Row="1" Grid.Column="8" x:Name="GSlider" Tag="G" Style="{StaticResource ChannelSliderStyle}"/>
+                    <Slider Grid.Row="1" Grid.Column="10" x:Name="BSlider" Tag="B" Style="{StaticResource ChannelSliderStyle}"/>
+
+                    <!-- Channel labels (row 2). FreePick has no label. -->
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{loc:Loc ColorPicker_ChannelLabel_Hue}" Style="{StaticResource ChannelColumnFooterStyle}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="4" Text="{loc:Loc ColorPicker_ChannelLabel_Alpha}" Style="{StaticResource ChannelColumnFooterStyle}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="6" Text="{loc:Loc ColorPicker_ChannelLabel_R}" Style="{StaticResource ChannelColumnFooterStyle}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="8" Text="{loc:Loc ColorPicker_ChannelLabel_G}" Style="{StaticResource ChannelColumnFooterStyle}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="10" Text="{loc:Loc ColorPicker_ChannelLabel_B}" Style="{StaticResource ChannelColumnFooterStyle}"/>
+                </Grid>
+
+                <!-- ROW 2: hex textboxes (left) + Apply / Reset buttons (right).
+                     Negative top margin pulls the entire bottom section up so the rgba textbox sits 14pt
+                     below the FreePickArea bottom (vs ~38pt when stacked underneath the channel-labels row
+                     and the outer 16pt gap). WPF subtracts negative margin from measured size, so the body
+                     grid's row 2 shrinks accordingly and the window auto-height tracks too - no wasted
+                     blank strip at the bottom.
+                     The column structure mirrors the picker grid above via SharedSizeGroup, so the hex
+                     stack inherits col 0's 160pt FreePickArea width, and Apply / Reset (spanning cols
+                     2-10 with a star-split inner grid) automatically span the same range as the
+                     bar / slider columns - no hardcoded summation, just track whatever the columns
+                     above happen to measure. -->
+                <Grid Grid.Row="2" Margin="0,-34,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="6"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160"  SharedSizeGroup="PickerC0"/>
+                        <ColumnDefinition Width="16"   SharedSizeGroup="PickerC1"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC2"/>
+                        <ColumnDefinition Width="8"    SharedSizeGroup="PickerC3"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC4"/>
+                        <ColumnDefinition Width="14"   SharedSizeGroup="PickerC5"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC6"/>
+                        <ColumnDefinition Width="14"   SharedSizeGroup="PickerC7"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC8"/>
+                        <ColumnDefinition Width="14"   SharedSizeGroup="PickerC9"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PickerC10"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- rgba hex stack lives in col 0 (the FreePickArea column, 160pt). -->
+                    <Grid Grid.Row="0" Grid.Column="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="{loc:Loc ColorPicker_RgbaHexLabel}"
+                                   Style="{StaticResource SettingTitleStyle}"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="2"
+                                 x:Name="RgbaBox"
+                                 Style="{StaticResource SettingsTextBoxStyle}"
+                                 FontFamily="Consolas, Courier New"
+                                 Width="94"
+                                 TextChanged="RgbaBox_TextChanged"/>
+                    </Grid>
+
+                    <Grid Grid.Row="2" Grid.Column="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="{loc:Loc ColorPicker_ArgbHexLabel}"
+                                   Style="{StaticResource SettingTitleStyle}"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="2"
+                                 x:Name="ArgbBox"
+                                 Style="{StaticResource SettingsTextBoxStyle}"
+                                 FontFamily="Consolas, Courier New"
+                                 Width="94"
+                                 TextChanged="ArgbBox_TextChanged"/>
+                    </Grid>
+
+                    <!-- Default + Reset span the bottom grid's cols 2-10 (the 9 columns mirroring the
+                         picker's bar / slider band). Inner sub-grid uses two * cols with an 8pt gap, so
+                         the buttons split the spanned width evenly and the gap stays exactly 8pt
+                         regardless of how the picker columns measure. -->
+                    <Grid Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="9" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                x:Name="DefaultButton"
+                                Style="{StaticResource SettingsButtonStyle}"
+                                Content="{loc:Loc ColorPicker_DefaultButton}"
+                                Padding="20,8"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Center"
+                                Click="Default_Click"/>
+                        <Button Grid.Column="2"
+                                x:Name="ResetButton"
+                                Style="{StaticResource SettingsButtonStyle}"
+                                Content="{loc:Loc ColorPicker_ResetButton}"
+                                Padding="20,8"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Center"
+                                Click="Reset_Click"/>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

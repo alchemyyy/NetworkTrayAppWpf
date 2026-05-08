@@ -1,0 +1,150 @@
+<Window
+    x:Class="NetworkTrayAppWPF.WPF.UninstallerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+    xmlns:utils="clr-namespace:NetworkTrayAppWPF.WPF.Utils"
+    xmlns:loc="clr-namespace:NetworkTrayAppWPF.Localization"
+    utils:KeyboardFocusBehavior.EnableKeyboardOnlyFocus="True"
+    utils:KeyboardFocusBehavior.FocusStyle="{StaticResource KeyboardFocusVisualStyle}"
+    Title="{loc:Loc Uninstaller_Title}"
+    Width="520"
+    Height="360"
+    MinWidth="420"
+    MinHeight="320"
+    Background="{DynamicResource ThemeBackground}"
+    Foreground="{DynamicResource ThemeForeground}"
+    WindowStyle="None"
+    ResizeMode="NoResize"
+    WindowStartupLocation="CenterScreen"
+    TextElement.FontFamily="Segoe UI Variable, Segoe UI"
+    TextOptions.TextFormattingMode="Ideal"
+    TextOptions.TextRenderingMode="ClearType"
+    UseLayoutRounding="True">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="32"
+                            ResizeBorderThickness="0"
+                            CornerRadius="0"
+                            GlassFrameThickness="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Border x:Name="RootBorder"
+            Background="{DynamicResource ThemeBackground}"
+            BorderBrush="{DynamicResource ThemeBorder}"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="32"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- TITLE BAR -->
+            <Grid Grid.Row="0" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="{loc:Loc Uninstaller_Title}"
+                           Foreground="{DynamicResource ThemeForeground}"
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"
+                           FontSize="13"/>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button x:Name="CloseButton"
+                            Style="{StaticResource CaptionCloseButtonStyle}"
+                            Click="Close_Click"
+                            Content="&#xE8BB;"
+                            ToolTip="{loc:Loc Uninstaller_Caption_Close}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- BODY -->
+            <Grid Grid.Row="1" Margin="28,8,28,20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Style="{StaticResource SectionHeaderStyle}"
+                           Text="{loc:Loc Uninstaller_SectionHeader}"/>
+
+                <TextBlock Grid.Row="1"
+                           x:Name="DescriptionText"
+                           Style="{StaticResource SettingDescriptionStyle}"
+                           Text="{loc:Loc Uninstaller_DefaultDescription}"
+                           Margin="0,0,0,16"/>
+
+                <StackPanel Grid.Row="2">
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <RadioButton x:Name="KeepSettingsRadio"
+                                         Grid.Column="0"
+                                         GroupName="SettingsChoice"
+                                         IsChecked="True"
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,12,0"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SettingTitleStyle}" Text="{loc:Loc Uninstaller_KeepSettings_Title}"/>
+                                <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                           Text="{loc:Loc Uninstaller_KeepSettings_Description}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <RadioButton x:Name="DeleteSettingsRadio"
+                                         Grid.Column="0"
+                                         GroupName="SettingsChoice"
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,12,0"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SettingTitleStyle}" Text="{loc:Loc Uninstaller_DeleteSettings_Title}"/>
+                                <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                           x:Name="DeleteSettingsDescription"
+                                           Text="{loc:Loc Uninstaller_DeleteSettings_DefaultDescription}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Row="3"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Margin="0,20,0,0">
+                    <Button x:Name="CancelButton"
+                            Style="{StaticResource SettingsButtonStyle}"
+                            Content="{loc:Loc Uninstaller_Cancel}"
+                            Padding="20,8"
+                            Margin="0,0,8,0"
+                            Click="Cancel_Click"/>
+                    <Button x:Name="UninstallButton"
+                            Style="{StaticResource SettingsButtonStyle}"
+                            Content="{loc:Loc Uninstaller_UninstallButton}"
+                            Padding="20,8"
+                            Click="Uninstall_Click"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

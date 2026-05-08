@@ -1,0 +1,108 @@
+<UserControl
+    x:Class="NetworkTrayAppWPF.WPF.Settings.Pages.GeneralPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:NetworkTrayAppWPF.WPF"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:utils="clr-namespace:NetworkTrayAppWPF.WPF.Settings.Utils"
+    xmlns:utils1="clr-namespace:NetworkTrayAppWPF.WPF.Utils"
+    xmlns:loc="clr-namespace:NetworkTrayAppWPF.Localization"
+    mc:Ignorable="d"
+    d:DesignWidth="660"
+    d:DesignHeight="594"
+    d:Background="#1F1F1F"
+    utils1:SettingsKeyboardNavigation.IsContentSection="True">
+    <StackPanel>
+        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="{loc:Loc Settings_General_SectionHeader}"/>
+
+        <utils:SettingsCard x:Name="RunOnStartupCard"
+                               Title="{loc:Loc Settings_General_RunOnStartup_Title}"
+                               Description="{loc:Loc Settings_General_RunOnStartup_Description}">
+            <utils:SettingsCard.Control>
+                <CheckBox x:Name="RunOnStartupToggle"
+                          Style="{StaticResource ToggleSwitchStyle}"
+                          Checked="RunOnStartup_Changed"
+                          Unchecked="RunOnStartup_Changed"/>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
+
+        <TextBlock Text="{loc:Loc Settings_General_Installation_Header}"
+                   Style="{StaticResource SubsectionHeaderStyle}"/>
+
+        <Border Style="{StaticResource SettingsCardStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Style="{StaticResource SettingsCardTitlePanel}">
+                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="{loc:Loc Settings_General_LocalUser_Title}"/>
+                    <TextBlock x:Name="InstallLocalAppDataStatusText"
+                               Style="{StaticResource SettingDescriptionStyle}"
+                               Text="..."/>
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button x:Name="InstallLocalAppDataButton"
+                            Style="{StaticResource SettingsButtonStyle}"
+                            Content="{loc:Loc Settings_General_Install_Button}"
+                            Padding="14,6"
+                            Margin="{StaticResource RightSpacerSmall}"
+                            Click="InstallLocalAppData_Click"/>
+                    <Button x:Name="UninstallLocalAppDataButton"
+                            Style="{StaticResource SettingsButtonStyle}"
+                            Content="{loc:Loc Settings_General_Uninstall_Button}"
+                            Padding="14,6"
+                            Click="UninstallLocalAppData_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Style="{StaticResource SettingsCardStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Style="{StaticResource SettingsCardTitlePanel}">
+                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="{loc:Loc Settings_General_SystemWide_Title}"/>
+                    <TextBlock x:Name="InstallProgramFilesStatusText"
+                               Style="{StaticResource SettingDescriptionStyle}"
+                               Text="..."/>
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button x:Name="InstallProgramFilesButton"
+                            Style="{StaticResource SettingsButtonStyle}"
+                            Content="{loc:Loc Settings_General_Install_Button}"
+                            Padding="14,6"
+                            Margin="{StaticResource RightSpacerSmall}"
+                            Click="InstallProgramFiles_Click"/>
+                    <Button x:Name="UninstallProgramFilesButton"
+                            Style="{StaticResource SettingsButtonStyle}"
+                            Content="{loc:Loc Settings_General_Uninstall_Button}"
+                            Padding="14,6"
+                            Click="UninstallProgramFiles_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Style="{StaticResource SettingsCardStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Style="{StaticResource SettingsCardTitlePanel}">
+                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="{loc:Loc Settings_General_WindowsStore_Title}"/>
+                    <TextBlock x:Name="InstallStoreStatusText"
+                               Style="{StaticResource SettingDescriptionStyle}"
+                               Text="..."/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </StackPanel>
+</UserControl>

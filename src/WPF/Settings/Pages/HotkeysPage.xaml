@@ -1,0 +1,172 @@
+<UserControl
+    x:Class="NetworkTrayAppWPF.WPF.Settings.Pages.HotkeysPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:utils="clr-namespace:NetworkTrayAppWPF.WPF.Utils"
+    xmlns:pages="clr-namespace:NetworkTrayAppWPF.WPF.Settings.Pages"
+    xmlns:loc="clr-namespace:NetworkTrayAppWPF.Localization"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignWidth="660"
+    d:DesignHeight="594"
+    d:Background="#1F1F1F"
+    utils:SettingsKeyboardNavigation.IsContentSection="True">
+    <StackPanel>
+        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="{loc:Loc Settings_Hotkeys_SectionHeader}"/>
+
+        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                   Text="{loc:Loc Settings_Hotkeys_SectionDescription}"
+                   Margin="0,0,0,16"/>
+
+        <!-- Search box filters the rows by title + description. Lives outside the
+             ItemsControl so the filter survives row rebuilds. -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Left"
+                    Margin="0,0,0,12">
+            <TextBlock Text="{loc:Loc Settings_Hotkeys_SearchLabel}"
+                       Style="{StaticResource SettingTitleStyle}"
+                       VerticalAlignment="Center"
+                       Margin="{StaticResource RightSpacerSmall}"/>
+            <TextBox x:Name="HotkeySearchBox"
+                     Style="{StaticResource SettingsTextBoxStyle}"
+                     Width="240"
+                     VerticalAlignment="Center"
+                     TextChanged="HotkeySearchBox_TextChanged"/>
+        </StackPanel>
+
+        <ItemsControl x:Name="HotkeyRowsList">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type utils:HotkeyRowViewModel}">
+                    <!-- One bound chord shown as a sub-card under its row. The card spans the
+                         left edge of the modifier ComboBox to the right edge of the key TextBox
+                         (set up via the parent Grid's ColumnSpan + trailing Margin). -->
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Border.Resources>
+                            <DataTemplate x:Key="HotkeyEntryCardTemplate" DataType="{x:Type utils:HotkeyEntryViewModel}">
+                                <Border Background="{DynamicResource ThemeControlBackground}"
+                                        CornerRadius="{DynamicResource CornerRadiusMedium}"
+                                        Margin="0,0,0,4">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Display}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="12,6,0,6"
+                                                   Foreground="{DynamicResource ThemeForeground}"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding StatusGlyph}"
+                                                   FontFamily="Segoe Fluent Icons"
+                                                   FontSize="14"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"
+                                                   Foreground="{DynamicResource ThemeForeground}">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip Content="{Binding StatusTooltip}"
+                                                         FontFamily="Segoe UI Variable, Segoe UI"
+                                                         FontSize="12"/>
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
+                                        <!-- Width/Height freeze the button at its current pre-zoom size; Padding=0
+                                             lets the larger glyph render inside without forcing the button to grow.
+                                             Inner TextBlock with an explicit Width matching the button and
+                                             TextAlignment=Center pins the glyph to the button's horizontal midpoint. -->
+                                        <Button Grid.Column="2"
+                                                Style="{StaticResource SettingsButtonStyle}"
+                                                Width="32"
+                                                Height="29"
+                                                Padding="0"
+                                                ToolTip="{loc:Loc Settings_Hotkeys_DeleteHotkey_ToolTip}"
+                                                Click="HotkeyEntryDelete_Click"
+                                                Tag="{Binding}">
+                                            <TextBlock Text="x"
+                                                       FontSize="20"
+                                                       Width="32"
+                                                       TextAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </Border.Resources>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <!-- Label column needs a real minimum so the description text doesn't
+                                     collapse to character-wrapped width when controls fill out. -->
+                                <ColumnDefinition Width="*" MinWidth="240"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock Style="{StaticResource SettingTitleStyle}" Text="{Binding Label}"/>
+                                <TextBlock Style="{StaticResource SettingDescriptionStyle}" Text="{Binding Description}"/>
+                            </StackPanel>
+
+                            <!-- Padding overridden to "8,0,2,0" (vs the global SettingsComboBoxStyle's "12,0")
+                                 to claw back ~20px of horizontal text room without widening the box. -->
+                            <ComboBox Grid.Row="0" Grid.Column="1"
+                                      Style="{StaticResource SettingsComboBoxStyle}"
+                                      Width="170"
+                                      Padding="8,0,2,0"
+                                      Margin="{StaticResource RightSpacerSmall}"
+                                      VerticalAlignment="Center"
+                                      SelectedValuePath="Modifiers"
+                                      SelectedValue="{Binding DraftModifiers, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      ItemsSource="{x:Static pages:HotkeysPage.HotkeyModifierOptions}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+
+                            <TextBox Grid.Row="0" Grid.Column="2"
+                                     Style="{StaticResource SettingsTextBoxStyle}"
+                                     Width="60"
+                                     Margin="{StaticResource RightSpacerSmall}"
+                                     VerticalAlignment="Center"
+                                     IsReadOnly="True"
+                                     Cursor="IBeam"
+                                     Text="{Binding DraftKeyDisplay, Mode=OneWay}"
+                                     GotFocus="HotkeyKeyBox_GotFocus"
+                                     LostFocus="HotkeyKeyBox_LostFocus"
+                                     PreviewKeyDown="HotkeyKeyBox_PreviewKeyDown"
+                                     Tag="{Binding}"/>
+
+                            <!-- Trailing button is "Add" (commit draft as a new entry), "Exists"
+                                 (draft duplicates an existing entry, kept disabled), or disabled
+                                 with "Add" when the draft is incomplete. -->
+                            <Button Grid.Row="0" Grid.Column="3"
+                                    Style="{StaticResource SettingsButtonStyle}"
+                                    Content="{Binding AddButtonText}"
+                                    IsEnabled="{Binding AddButtonEnabled}"
+                                    MinWidth="70"
+                                    VerticalAlignment="Center"
+                                    Click="HotkeyAdd_Click"
+                                    Tag="{Binding}"/>
+
+                            <!-- Entry cards span the modifier ComboBox + key TextBox columns; the trailing
+                                 8px Margin nips the column's RightSpacerSmall so the card's right edge
+                                 lines up with the key TextBox right edge. -->
+                            <ItemsControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                          ItemsSource="{Binding Entries}"
+                                          ItemTemplate="{StaticResource HotkeyEntryCardTemplate}"
+                                          Margin="0,8,8,0"
+                                          Visibility="{Binding HasEntries, Converter={StaticResource BoolToVisibility}}"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

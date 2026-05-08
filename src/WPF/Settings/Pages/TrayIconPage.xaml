@@ -1,0 +1,103 @@
+<UserControl
+    x:Class="NetworkTrayAppWPF.WPF.Settings.Pages.TrayIconPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:loc="clr-namespace:NetworkTrayAppWPF.Localization"
+    xmlns:utils="clr-namespace:NetworkTrayAppWPF.WPF.Settings.Utils"
+    xmlns:utils1="clr-namespace:NetworkTrayAppWPF.WPF.Utils"
+    mc:Ignorable="d"
+    d:DesignWidth="660"
+    d:DesignHeight="594"
+    d:Background="#1F1F1F"
+    utils1:SettingsKeyboardNavigation.IsContentSection="True">
+    <StackPanel>
+        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="{loc:Loc Settings_TrayIcon_SectionHeader}"/>
+
+        <TextBlock Text="{loc:Loc Settings_TrayIcon_ContextMenu_Header}"
+                   Style="{StaticResource SubsectionHeaderStyle}"/>
+
+        <utils:SettingsCard Title="{loc:Loc Settings_TrayIcon_MenuPosition_Title}"
+                               Description="{loc:Loc Settings_TrayIcon_MenuPosition_Description}">
+            <utils:SettingsCard.Control>
+                <ComboBox x:Name="ContextMenuPositionCombo"
+                          Style="{StaticResource SettingsComboBoxStyle}"
+                          VerticalAlignment="Center"
+                          Tag="ContextMenuPosition" SelectionChanged="EnumCombo_Changed">
+                    <ComboBoxItem Tag="Classic" Content="{loc:Loc Settings_TrayIcon_MenuPosition_Classic}"/>
+                    <ComboBoxItem Tag="Modern" Content="{loc:Loc Settings_TrayIcon_MenuPosition_Modern}"/>
+                </ComboBox>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
+
+        <TextBlock Text="{loc:Loc Settings_TrayIcon_ModifiedActions_Header}"
+                   Style="{StaticResource SubsectionHeaderStyle}"/>
+        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                   Text="{loc:Loc Settings_TrayIcon_ModifiedActions_Description}"
+                   Margin="0,0,0,8"/>
+
+        <utils:SettingsCard Title="{loc:Loc Settings_TrayIcon_CtrlLeftClick_Title}">
+            <utils:SettingsCard.Control>
+                <ComboBox x:Name="TrayCtrlLeftClickActionCombo"
+                          Style="{StaticResource SettingsComboBoxStyle}"
+                          VerticalAlignment="Center"
+                          Tag="TrayCtrlLeftClickAction" SelectionChanged="EnumCombo_Changed"/>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
+
+        <utils:SettingsCard Title="{loc:Loc Settings_TrayIcon_AltLeftClick_Title}">
+            <utils:SettingsCard.Control>
+                <ComboBox x:Name="TrayAltLeftClickActionCombo"
+                          Style="{StaticResource SettingsComboBoxStyle}"
+                          VerticalAlignment="Center"
+                          Tag="TrayAltLeftClickAction" SelectionChanged="EnumCombo_Changed"/>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
+
+        <utils:SettingsCard Title="{loc:Loc Settings_TrayIcon_CtrlRightClick_Title}">
+            <utils:SettingsCard.Control>
+                <ComboBox x:Name="TrayCtrlRightClickActionCombo"
+                          Style="{StaticResource SettingsComboBoxStyle}"
+                          VerticalAlignment="Center"
+                          Tag="TrayCtrlRightClickAction" SelectionChanged="EnumCombo_Changed"/>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
+
+        <utils:SettingsCard Title="{loc:Loc Settings_TrayIcon_AltRightClick_Title}">
+            <utils:SettingsCard.Control>
+                <ComboBox x:Name="TrayAltRightClickActionCombo"
+                          Style="{StaticResource SettingsComboBoxStyle}"
+                          VerticalAlignment="Center"
+                          Tag="TrayAltRightClickAction" SelectionChanged="EnumCombo_Changed"/>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
+
+        <utils:SettingsCard Title="{loc:Loc Settings_TrayIcon_DoubleLeftClick_Title}">
+            <utils:SettingsCard.Control>
+                <ComboBox x:Name="TrayDoubleClickActionCombo"
+                          Style="{StaticResource SettingsComboBoxStyle}"
+                          VerticalAlignment="Center"
+                          Tag="TrayDoubleClickAction" SelectionChanged="EnumCombo_Changed"/>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
+
+        <utils:SettingsCard Title="{loc:Loc Settings_TrayIcon_CtrlDoubleLeftClick_Title}">
+            <utils:SettingsCard.Control>
+                <ComboBox x:Name="TrayCtrlDoubleLeftClickActionCombo"
+                          Style="{StaticResource SettingsComboBoxStyle}"
+                          VerticalAlignment="Center"
+                          Tag="TrayCtrlDoubleLeftClickAction" SelectionChanged="EnumCombo_Changed"/>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
+
+        <utils:SettingsCard Title="{loc:Loc Settings_TrayIcon_AltDoubleLeftClick_Title}">
+            <utils:SettingsCard.Control>
+                <ComboBox x:Name="TrayAltDoubleLeftClickActionCombo"
+                          Style="{StaticResource SettingsComboBoxStyle}"
+                          VerticalAlignment="Center"
+                          Tag="TrayAltDoubleLeftClickAction" SelectionChanged="EnumCombo_Changed"/>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
+    </StackPanel>
+</UserControl>

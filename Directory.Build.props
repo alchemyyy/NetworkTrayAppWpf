@@ -1,0 +1,51 @@
+<Project>
+  <PropertyGroup>
+    <!-- Redirect obj\ to the repo root instead of next to the .csproj.
+         Must live in Directory.Build.props (auto-imported before the SDK props)
+         because BaseIntermediateOutputPath is consumed during the SDK props
+         import — setting it inside the .csproj is too late. -->
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\</BaseIntermediateOutputPath>
+
+    <BuildNumberFile>$(MSBuildThisFileDirectory)buildnumber.txt</BuildNumberFile>
+  </PropertyGroup>
+
+  <!-- Bake the build number into the assembly at compile time as a
+       `const int NetworkTrayAppWPF.BuildInfo.BuildNumber`.
+       The constant is inlined at every use site by the C# compiler, so no
+       reflection or attribute lookup is needed at runtime.
+
+       This target is read-only: it reads buildnumber.txt and embeds the
+       current value. It deliberately does NOT increment, because
+       GenerateAssemblyInfo can fire more than once across the
+       outer-build / inner-publish chain triggered by Release (and within
+       a single MSBuild process under some WPF/publish target paths).
+       The bump lives in PublishAfterBuild (NetworkTrayAppWPF.csproj),
+       which fires exactly once before the publish Exec, so the inner
+       publish reads the already-bumped value. -->
+  <Target Name="EmbedBuildNumber" BeforeTargets="GenerateAssemblyInfo"
+          Condition="'$(EmitBuildInfo)' != 'false'">
+    <PropertyGroup>
+      <_OldBuildNumber Condition="Exists('$(BuildNumberFile)')">$([System.IO.File]::ReadAllText('$(BuildNumberFile)').Trim())</_OldBuildNumber>
+      <_OldBuildNumber Condition="'$(_OldBuildNumber)' == ''">0</_OldBuildNumber>
+      <BuildNumber>$(_OldBuildNumber)</BuildNumber>
+      <_BuildInfoFile>$(IntermediateOutputPath)BuildInfo.g.cs</_BuildInfoFile>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <ItemGroup>
+      <_BuildInfoLines Include="// &lt;auto-generated/&gt;" />
+      <_BuildInfoLines Include="namespace NetworkTrayAppWPF%3B" />
+      <_BuildInfoLines Include="internal static class BuildInfo" />
+      <_BuildInfoLines Include="{" />
+      <_BuildInfoLines Include="    public const int BuildNumber = $(BuildNumber)%3B" />
+      <_BuildInfoLines Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(_BuildInfoFile)"
+                      Lines="@(_BuildInfoLines)"
+                      Overwrite="true" />
+    <ItemGroup>
+      <Compile Include="$(_BuildInfoFile)" />
+      <FileWrites Include="$(_BuildInfoFile)" />
+    </ItemGroup>
+  </Target>
+</Project>

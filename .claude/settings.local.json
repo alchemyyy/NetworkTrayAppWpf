@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p .claude/patches)",
+      "Bash(git diff *)",
+      "Bash(git reset *)",
+      "Bash(git stash *)"
+    ]
+  }
+}
