@@ -6,7 +6,6 @@ using NetworkTrayAppWPF.Services;
 using NetworkTrayAppWPF.Utils;
 using NetworkTrayAppWPF.WPF.Settings.Utils;
 using Button = System.Windows.Controls.Button;
-using TextBlock = System.Windows.Controls.TextBlock;
 using UserControl = System.Windows.Controls.UserControl;
 
 namespace NetworkTrayAppWPF.WPF.Settings.Pages;
@@ -49,6 +48,10 @@ public partial class GeneralPage : UserControl
         {
             _suppressChangeEvents = false;
         }
+
+        // Populate install card descriptions on initial load. The default checked nav item is
+        // set from XAML before the shell's Checked handler is attached, so first show needs this.
+        RefreshInstallationSection();
     }
 
     /// <summary>
@@ -121,7 +124,7 @@ public partial class GeneralPage : UserControl
             {
                 case InstallScope.LocalAppData:
                     ApplyInstallRow(info,
-                        InstallLocalAppDataStatusText,
+                        InstallLocalAppDataCard,
                         InstallLocalAppDataButton,
                         UninstallLocalAppDataButton,
                         InstallationService.LocalAppDataInstallExe,
@@ -129,7 +132,7 @@ public partial class GeneralPage : UserControl
                     break;
                 case InstallScope.ProgramFiles:
                     ApplyInstallRow(info,
-                        InstallProgramFilesStatusText,
+                        InstallProgramFilesCard,
                         InstallProgramFilesButton,
                         UninstallProgramFilesButton,
                         InstallationService.ProgramFilesInstallExe,
@@ -144,7 +147,7 @@ public partial class GeneralPage : UserControl
 
     private static void ApplyInstallRow(
         InstallationInfo info,
-        TextBlock statusText,
+        SettingsCard card,
         Button installButton,
         Button uninstallButton,
         string installPath,
@@ -157,7 +160,7 @@ public partial class GeneralPage : UserControl
         switch (info.Status)
         {
             case InstallStatus.NotInstalled:
-                statusText.Text = string.Format(
+                card.Description = string.Format(
                     LocalizationManager.Instance["Settings_General_NotInstalled_Format"],
                     installPath, elevationSuffix);
                 installButton.Content = LocalizationManager.Instance["Settings_General_Install_Button"];
@@ -165,7 +168,7 @@ public partial class GeneralPage : UserControl
                 uninstallButton.Visibility = Visibility.Collapsed;
                 break;
             case InstallStatus.InstalledUpToDate:
-                statusText.Text = info.InstalledVersion is { } v
+                card.Description = info.InstalledVersion is { } v
                     ? string.Format(
                         LocalizationManager.Instance["Settings_General_InstalledWithBuild_Format"],
                         v, installPath)
@@ -177,7 +180,7 @@ public partial class GeneralPage : UserControl
                 uninstallButton.Visibility = Visibility.Visible;
                 break;
             case InstallStatus.InstalledOutOfDate:
-                statusText.Text = info.InstalledVersion is { } ov
+                card.Description = info.InstalledVersion is { } ov
                     ? string.Format(
                         LocalizationManager.Instance["Settings_General_InstalledOutOfDate_Format"],
                         ov, BuildInfo.BuildNumber, elevationSuffix)
@@ -190,7 +193,7 @@ public partial class GeneralPage : UserControl
                 uninstallButton.Visibility = Visibility.Visible;
                 break;
             case InstallStatus.CurrentlyRunning:
-                statusText.Text = string.Format(
+                card.Description = string.Format(
                     LocalizationManager.Instance["Settings_General_CurrentlyRunning_Format"],
                     installPath);
                 installButton.Visibility = Visibility.Collapsed;
@@ -202,7 +205,7 @@ public partial class GeneralPage : UserControl
 
     private void ApplyStoreRow(InstallationInfo info)
     {
-        InstallStoreStatusText.Text = info.Status == InstallStatus.CurrentlyRunning
+        InstallStoreCard.Description = info.Status == InstallStatus.CurrentlyRunning
             ? LocalizationManager.Instance["Settings_General_StoreRunning"]
             : LocalizationManager.Instance["Settings_General_StoreNotInstalled"];
     }

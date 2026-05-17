@@ -53,33 +53,24 @@ public static class UninstallScript
         }
     }
 
-    // Filename patterns we lay down at install time
-    // (Release single-file: just the .exe;
-    //  Debug-style multi-file: .exe + sibling .dll/.pdb/.runtimeconfig.json/.deps.json).
-    // Anything matching these is fair game to delete even when the user opted to keep settings.
-    // None of these match user-data files (settings.xml, *.log, etc.) that may share the LocalAppData install dir.
-    private static readonly string[] RuntimeFilePatterns =
-        ["*.exe", "*.dll", "*.pdb", "*.runtimeconfig.json", "*.deps.json"];
+    // App-specific files laid down by the current install flow. The install root is shared
+    // across TrayAppWPF-derived apps, so uninstall must not wildcard-delete sibling apps.
+    private static string[] InstalledAppFileNames =>
+    [
+        InstallationService.InstalledExeFileName,
+        Program.ApplicationName + ".dll",
+        Program.ApplicationName + ".pdb",
+        Program.ApplicationName + ".runtimeconfig.json",
+        Program.ApplicationName + ".deps.json",
+    ];
 
     private static string BuildScript(string installDir, WindowsUninstallRegistry.Scope regScope, bool deleteSettings)
     {
         string installExe = Path.Combine(installDir, InstallationService.InstalledExeFileName);
         string regKeyFullPath = (regScope == WindowsUninstallRegistry.Scope.LocalMachine ? "HKLM\\" : "HKCU\\")
             + WindowsUninstallRegistry.SubKeyPath;
-        string startupLnk = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.Startup),
-            Program.ApplicationName + ".lnk");
+        string startupLnk = StartupManager.ShortcutPath;
         string settingsDir = AppSettings.GetDefaultDirectory();
-
-        // For LocalAppData, install dir == settings dir.
-        // For ProgramFiles they're disjoint and we can wipe install dir freely.
-        bool installIsSettingsDir = IsSamePath(installDir, settingsDir);
-
-        // Wipe install dir wholesale UNLESS we'd be eating the user's settings against their wishes.
-        bool wipeInstallDirWholesale = !installIsSettingsDir || deleteSettings;
-
-        // Independent settings-dir wipe needed only when settings dir is separate AND user asked for it.
-        bool wipeSettingsDirSeparately = deleteSettings && !installIsSettingsDir;
 
         // PowerShell single-quoted literal: any embedded ' must be doubled.
         string installExeForPs = installExe.Replace("'", "''");
@@ -95,6 +86,12 @@ public static class UninstallScript
         sb.AppendLine("setlocal");
         sb.AppendLine("set ERR=0");
         sb.AppendLine();
+        if (regScope == WindowsUninstallRegistry.Scope.LocalMachine)
+        {
+            sb.AppendLine("rem Reconcile Start Menu shortcuts across every user profile from an already-elevated context.");
+            sb.AppendLine($"start \"\" /wait \"{EscBat(installExe)}\" --admin-action sync-startmenu --remove-scope system");
+            sb.AppendLine();
+        }
         sb.AppendLine("rem Kill processes whose executable path equals the install exe (and only those -");
         sb.AppendLine("rem a portable copy of the app running from elsewhere is untouched).");
         sb.AppendLine("rem Loops with a brief sleep so the watcher/monitored restart race resolves.");
@@ -107,24 +104,12 @@ public static class UninstallScript
             + "$procs | Stop-Process -Force -ErrorAction SilentlyContinue; "
             + "Start-Sleep -Milliseconds 500 }\" >nul 2>&1");
         sb.AppendLine();
-        if (wipeInstallDirWholesale)
-        {
-            sb.AppendLine("rem Wipe the install dir (and everything in it). Either it's ProgramFiles");
-            sb.AppendLine("rem (no user data) or the user opted to delete settings too.");
-            sb.AppendLine($"rmdir /s /q \"{EscBat(installDir)}\" >nul 2>&1");
-            sb.AppendLine($"if exist \"{EscBat(installDir)}\" set ERR=1");
-        }
-        else
-        {
-            sb.AppendLine("rem LocalAppData install dir is shared with settings. User asked to keep settings,");
-            sb.AppendLine("rem so surgically remove only the runtime files we deployed and leave user data alone.");
-            foreach (string pattern in RuntimeFilePatterns)
-                sb.AppendLine($"del /f /q \"{EscBat(installDir)}\\{pattern}\" >nul 2>&1");
-            sb.AppendLine($"if exist \"{EscBat(installExe)}\" set ERR=1");
-            sb.AppendLine("rem If the dir is empty after the surgical pass (e.g. fresh install never ran),");
-            sb.AppendLine("rem clean it up; if user data remains, rmdir no-ops.");
-            sb.AppendLine($"rmdir \"{EscBat(installDir)}\" >nul 2>&1");
-        }
+        sb.AppendLine("rem Shared install root: remove only this app's files and leave sibling apps alone.");
+        foreach (string fileName in InstalledAppFileNames)
+            sb.AppendLine($"del /f /q \"{EscBat(Path.Combine(installDir, fileName))}\" >nul 2>&1");
+        sb.AppendLine($"if exist \"{EscBat(installExe)}\" set ERR=1");
+        sb.AppendLine("rem Remove the shared install dir only if it is empty after this app's files are gone.");
+        sb.AppendLine($"rmdir \"{EscBat(installDir)}\" >nul 2>&1");
         sb.AppendLine();
         sb.AppendLine("rem Registry: missing key returns errorlevel 1 (orphan-cleaned state) - not a real failure.");
         sb.AppendLine("rem Only flag if the key still exists after the delete (i.e. permission denied).");
@@ -132,11 +117,13 @@ public static class UninstallScript
         sb.AppendLine($"reg query \"{regKeyFullPath}\" >nul 2>&1");
         sb.AppendLine("if not errorlevel 1 set ERR=1");
         sb.AppendLine();
-        if (wipeSettingsDirSeparately)
+        if (deleteSettings)
         {
-            sb.AppendLine("rem ProgramFiles install + user wants settings gone. Wipe the AppData settings dir too.");
+            sb.AppendLine("rem User wants settings gone. Settings remain app-specific under the shared AppData root.");
             sb.AppendLine($"rmdir /s /q \"{EscBat(settingsDir)}\" >nul 2>&1");
             sb.AppendLine($"if exist \"{EscBat(settingsDir)}\" set ERR=1");
+            sb.AppendLine("rem Settings may have been the last child keeping a shared root from being empty.");
+            sb.AppendLine($"rmdir \"{EscBat(installDir)}\" >nul 2>&1");
             sb.AppendLine();
         }
         sb.AppendLine("rem Surgical shortcut delete: only remove the shell:startup .lnk if its target");
@@ -154,28 +141,13 @@ public static class UninstallScript
             + "{ Remove-Item -LiteralPath $lnk -Force -ErrorAction SilentlyContinue } "
             + "} catch { } }\" >nul 2>&1");
         sb.AppendLine("rem Legacy HKCU\\...\\Run entry from the pre-shortcut autostart era; idempotent removal.");
-        sb.AppendLine("reg delete \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\""
+        sb.AppendLine($"reg delete \"HKCU\\{StartupManager.LegacyRunKeyRegistryPath}\""
             + $" /v \"{Program.ApplicationName}\" /f >nul 2>&1");
         sb.AppendLine();
         sb.AppendLine("rem Self-delete and propagate ERR. (goto) discards the rest of the script,");
         sb.AppendLine("rem but the parsed compound chain on this line still runs to completion.");
         sb.AppendLine("(goto) 2>nul & del /f /q \"%~f0\" & exit /b %ERR%");
         return sb.ToString();
-    }
-
-    private static bool IsSamePath(string a, string b)
-    {
-        try
-        {
-            return string.Equals(
-                Path.GetFullPath(a).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-                Path.GetFullPath(b).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-                StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     // cmd.exe always expands % at parse time. A literal % in an embedded path must be doubled

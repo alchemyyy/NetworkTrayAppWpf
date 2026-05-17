@@ -30,79 +30,41 @@
         <TextBlock Text="{loc:Loc Settings_General_Installation_Header}"
                    Style="{StaticResource SubsectionHeaderStyle}"/>
 
-        <Border Style="{StaticResource SettingsCardStyle}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Style="{StaticResource SettingsCardTitlePanel}">
-                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="{loc:Loc Settings_General_LocalUser_Title}"/>
-                    <TextBlock x:Name="InstallLocalAppDataStatusText"
-                               Style="{StaticResource SettingDescriptionStyle}"
-                               Text="..."/>
-                </StackPanel>
-                <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center">
+        <utils:SettingsCard x:Name="InstallLocalAppDataCard"
+                            Title="{loc:Loc Settings_General_LocalUser_Title}">
+            <utils:SettingsCard.Control>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="InstallLocalAppDataButton"
                             Style="{StaticResource SettingsButtonStyle}"
                             Content="{loc:Loc Settings_General_Install_Button}"
-                            Padding="14,6"
                             Margin="{StaticResource RightSpacerSmall}"
                             Click="InstallLocalAppData_Click"/>
                     <Button x:Name="UninstallLocalAppDataButton"
                             Style="{StaticResource SettingsButtonStyle}"
                             Content="{loc:Loc Settings_General_Uninstall_Button}"
-                            Padding="14,6"
                             Click="UninstallLocalAppData_Click"/>
                 </StackPanel>
-            </Grid>
-        </Border>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
 
-        <Border Style="{StaticResource SettingsCardStyle}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Style="{StaticResource SettingsCardTitlePanel}">
-                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="{loc:Loc Settings_General_SystemWide_Title}"/>
-                    <TextBlock x:Name="InstallProgramFilesStatusText"
-                               Style="{StaticResource SettingDescriptionStyle}"
-                               Text="..."/>
-                </StackPanel>
-                <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center">
+        <utils:SettingsCard x:Name="InstallProgramFilesCard"
+                            Title="{loc:Loc Settings_General_SystemWide_Title}">
+            <utils:SettingsCard.Control>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="InstallProgramFilesButton"
                             Style="{StaticResource SettingsButtonStyle}"
                             Content="{loc:Loc Settings_General_Install_Button}"
-                            Padding="14,6"
                             Margin="{StaticResource RightSpacerSmall}"
                             Click="InstallProgramFiles_Click"/>
                     <Button x:Name="UninstallProgramFilesButton"
                             Style="{StaticResource SettingsButtonStyle}"
                             Content="{loc:Loc Settings_General_Uninstall_Button}"
-                            Padding="14,6"
                             Click="UninstallProgramFiles_Click"/>
                 </StackPanel>
-            </Grid>
-        </Border>
+            </utils:SettingsCard.Control>
+        </utils:SettingsCard>
 
-        <Border Style="{StaticResource SettingsCardStyle}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Style="{StaticResource SettingsCardTitlePanel}">
-                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="{loc:Loc Settings_General_WindowsStore_Title}"/>
-                    <TextBlock x:Name="InstallStoreStatusText"
-                               Style="{StaticResource SettingDescriptionStyle}"
-                               Text="..."/>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <utils:SettingsCard x:Name="InstallStoreCard"
+                            Title="{loc:Loc Settings_General_WindowsStore_Title}"/>
     </StackPanel>
 </UserControl>

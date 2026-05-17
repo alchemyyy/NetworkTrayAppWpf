@@ -239,8 +239,7 @@ public sealed class AppTheme : IDisposable
     /// </summary>
     public static string GetDefaultPath()
     {
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        string appFolder = Path.Combine(appData, Program.ApplicationName);
+        string appFolder = Program.AppLocalAppDataDirectory;
         Directory.CreateDirectory(appFolder);
         return Path.Combine(appFolder, "theme.xml");
     }

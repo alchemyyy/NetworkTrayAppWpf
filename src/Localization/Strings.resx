@@ -380,6 +380,15 @@ Target: {1}</value>
   <data name="Settings_General_Update_Button" xml:space="preserve">
     <value>Update</value>
   </data>
+  <data name="Settings_General_WindowsStore_Title" xml:space="preserve">
+    <value>Windows Store</value>
+  </data>
+  <data name="Settings_General_StoreRunning" xml:space="preserve">
+    <value>Running from the Microsoft Store install.</value>
+  </data>
+  <data name="Settings_General_StoreNotInstalled" xml:space="preserve">
+    <value>Not installed from the Microsoft Store.</value>
+  </data>
   <data name="Settings_Hotkeys_Add_Button" xml:space="preserve">
     <value>Add</value>
   </data>
@@ -567,7 +576,7 @@ Target: {1}</value>
     <value>This will remove the installed copy of NetworkTrayAppWPF and its registration in Windows Apps. Choose what to do with your settings.</value>
   </data>
   <data name="Uninstaller_DeleteSettings_DefaultDescription" xml:space="preserve">
-    <value>Also remove the NetworkTrayAppWPF folder under %LOCALAPPDATA%, including settings.xml.</value>
+    <value>Also remove %LOCALAPPDATA%\TrayAppWPF\NetworkTrayAppWPF, including settings.xml.</value>
   </data>
   <data name="Uninstaller_DeleteSettings_Description_Format" xml:space="preserve">
     <value>Also remove "{0}" including settings.xml.</value>

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Diagnostics;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Interop;
 using NetworkTrayAppWPF.Interop;
@@ -23,6 +24,8 @@ public enum SettingsTab
 
 public partial class SettingsWindow : Window, IConfirmDialogService, IThemeHost
 {
+    private const string RefreshOnShowMethodName = "RefreshOnShow";
+
     private readonly AppSettings _settings;
 
     private HwndSource? _hwndSource;
@@ -230,14 +233,35 @@ public partial class SettingsWindow : Window, IConfirmDialogService, IThemeHost
         ThemeSection.Visibility = Visibility.Collapsed;
         AboutSection.Visibility = Visibility.Collapsed;
 
-        switch (tag)
+        System.Windows.Controls.UserControl? activated = tag switch
         {
-            case "General": GeneralSection.Visibility = Visibility.Visible; break;
-            case "TrayIcon": TrayIconSection.Visibility = Visibility.Visible; break;
-            case "Network": NetworkSection.Visibility = Visibility.Visible; break;
-            case "Hotkeys": HotkeysSection.Visibility = Visibility.Visible; break;
-            case "Theme": ThemeSection.Visibility = Visibility.Visible; break;
-            case "About": AboutSection.Visibility = Visibility.Visible; break;
+            "General" => GeneralSection,
+            "TrayIcon" => TrayIconSection,
+            "Network" => NetworkSection,
+            "Hotkeys" => HotkeysSection,
+            "Theme" => ThemeSection,
+            "About" => AboutSection,
+            _ => null,
+        };
+        if (activated == null) return;
+
+        activated.Visibility = Visibility.Visible;
+        InvokeRefreshOnShow(activated);
+    }
+
+    private static void InvokeRefreshOnShow(System.Windows.Controls.UserControl page)
+    {
+        try
+        {
+            MethodInfo? method = page.GetType().GetMethod(
+                RefreshOnShowMethodName,
+                BindingFlags.Public | BindingFlags.Instance,
+                Type.EmptyTypes);
+            method?.Invoke(page, parameters: null);
+        }
+        catch (Exception ex)
+        {
+            WPFLog.Log($"SettingsWindow.InvokeRefreshOnShow({page.GetType().Name}): {ex.Message}");
         }
     }
 

@@ -45,19 +45,16 @@ public sealed record InstallResult(bool Success, string? ErrorMessage = null, bo
 /// </summary>
 public static class InstallationService
 {
-    // Derived from Program.ApplicationName so the skeleton picks up whatever name the fork sets,
-    // without forcing every install path to be threaded through the Program constant explicitly.
     public static string InstalledExeFileName => Program.ApplicationName + ".exe";
 
     public static string LocalAppDataInstallDir =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Program.ApplicationName);
+        Program.LocalAppDataRoot;
 
     public static string LocalAppDataInstallExe =>
         Path.Combine(LocalAppDataInstallDir, InstalledExeFileName);
 
     public static string ProgramFilesInstallDir =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Program.ApplicationName);
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Program.SharedRootFolderName);
 
     public static string ProgramFilesInstallExe =>
         Path.Combine(ProgramFilesInstallDir, InstalledExeFileName);
@@ -106,7 +103,7 @@ public static class InstallationService
     public static List<InstallationInfo> DetectAll()
     {
         const int currentVersion = BuildInfo.BuildNumber;
-        string currentPath = NormalizePath(Environment.ProcessPath);
+        string currentPath = PathNormalization.Normalize(Environment.ProcessPath);
 
         List<InstallationInfo> results =
         [
@@ -138,7 +135,7 @@ public static class InstallationService
 
         if (!fileExists) return new InstallationInfo(scope, installExe, InstallStatus.NotInstalled, null);
 
-        bool running = string.Equals(currentPath, NormalizePath(installExe), StringComparison.OrdinalIgnoreCase);
+        bool running = string.Equals(currentPath, PathNormalization.Normalize(installExe), StringComparison.OrdinalIgnoreCase);
         if (running)
             return new InstallationInfo(scope, installExe, InstallStatus.CurrentlyRunning, entry?.DisplayVersion);
 
@@ -170,7 +167,7 @@ public static class InstallationService
         {
             Directory.CreateDirectory(LocalAppDataInstallDir);
             string dest = LocalAppDataInstallExe;
-            if (string.Equals(NormalizePath(source), NormalizePath(dest), StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(PathNormalization.Normalize(source), PathNormalization.Normalize(dest), StringComparison.OrdinalIgnoreCase))
             {
                 // Same file - nothing to copy, just refresh the registry entry below
             }
@@ -179,6 +176,7 @@ public static class InstallationService
 
             WindowsUninstallRegistry.Write(WindowsUninstallRegistry.Scope.CurrentUser,
                 LocalAppDataInstallDir, BuildInfo.BuildNumber);
+            StartMenuShortcut.Sync();
             return new InstallResult(true);
         }
         catch (Exception ex)
@@ -216,10 +214,11 @@ public static class InstallationService
             if (!File.Exists(sourceExe)) return new InstallResult(false, $"Source exe not found: {sourceExe}");
             Directory.CreateDirectory(ProgramFilesInstallDir);
             string dest = ProgramFilesInstallExe;
-            if (!string.Equals(NormalizePath(sourceExe), NormalizePath(dest), StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(PathNormalization.Normalize(sourceExe), PathNormalization.Normalize(dest), StringComparison.OrdinalIgnoreCase))
                 File.Copy(sourceExe, dest, overwrite: true);
             WindowsUninstallRegistry.Write(WindowsUninstallRegistry.Scope.LocalMachine,
                 ProgramFilesInstallDir, buildNumber);
+            StartMenuShortcut.Sync(allUsers: true);
             return new InstallResult(true);
         }
         catch (Exception ex)
@@ -254,13 +253,15 @@ public static class InstallationService
         else
             return null;
 
+        StartMenuShortcut.Sync(removingScope: scope);
+
         Process? batProcess = UninstallScript.Run(installDir, regScope, deleteSettings);
 
         // Only shut down if THIS process is the install copy.
         // The bat kills any other processes at the install path itself (path-scoped, not name-scoped), so a portable
         // build uninstalling a different installed copy keeps running untouched.
-        string runningExe = NormalizePath(Environment.ProcessPath);
-        string installExe = NormalizePath(Path.Combine(installDir, InstalledExeFileName));
+        string runningExe = PathNormalization.Normalize(Environment.ProcessPath);
+        string installExe = PathNormalization.Normalize(Path.Combine(installDir, InstalledExeFileName));
         bool runningFromInstall = !string.IsNullOrEmpty(runningExe) &&
             string.Equals(runningExe, installExe, StringComparison.OrdinalIgnoreCase);
 
@@ -311,19 +312,6 @@ public static class InstallationService
         {
             WPFLog.Log($"InstallationService.TryInvokeElevated: {ex}");
             return new InstallResult(false, ex.Message);
-        }
-    }
-
-    private static string NormalizePath(string? path)
-    {
-        if (string.IsNullOrEmpty(path)) return string.Empty;
-        try
-        {
-            return Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        }
-        catch
-        {
-            return path;
         }
     }
 }

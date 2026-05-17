@@ -565,6 +565,24 @@ namespace NetworkTrayAppWPF.Localization {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Not installed from the Microsoft Store..
+        /// </summary>
+        public static string Settings_General_StoreNotInstalled {
+            get {
+                return ResourceManager.GetString("Settings_General_StoreNotInstalled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Running from the Microsoft Store install..
+        /// </summary>
+        public static string Settings_General_StoreRunning {
+            get {
+                return ResourceManager.GetString("Settings_General_StoreRunning", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to System wide.
         /// </summary>
         public static string Settings_General_SystemWide_Title {
@@ -606,6 +624,15 @@ namespace NetworkTrayAppWPF.Localization {
         public static string Settings_General_Update_Button {
             get {
                 return ResourceManager.GetString("Settings_General_Update_Button", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Windows Store.
+        /// </summary>
+        public static string Settings_General_WindowsStore_Title {
+            get {
+                return ResourceManager.GetString("Settings_General_WindowsStore_Title", resourceCulture);
             }
         }
 
@@ -1141,7 +1168,7 @@ namespace NetworkTrayAppWPF.Localization {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Also remove the NetworkTrayAppWPF folder under %LOCALAPPDATA%, including settings.xml..
+        ///   Looks up a localized string similar to Also remove %LOCALAPPDATA%\TrayAppWPF\NetworkTrayAppWPF, including settings.xml..
         /// </summary>
         public static string Uninstaller_DeleteSettings_DefaultDescription {
             get {

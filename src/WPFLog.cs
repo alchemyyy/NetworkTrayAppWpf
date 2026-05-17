@@ -8,7 +8,7 @@ namespace NetworkTrayAppWPF;
 /// Singular file-backed logger for the app. Calls to <see cref="Log"/> append a timestamped line to an in-memory buffer
 /// that is flushed to disk every ~2 seconds, so logging stays cheap on hot paths and a process kill loses at most ~2s.
 ///
-/// Two files live alongside settings at <c>%LOCALAPPDATA%\&lt;ApplicationName&gt;\</c>:
+/// Two files live alongside settings at <c>%LOCALAPPDATA%\TrayAppWPF\&lt;ApplicationName&gt;\</c>:
 ///   * <c>active.log</c>: current.
 ///   * <c>old.log</c>: previous rollover.
 /// Either trigger rotates - active file at or above 10 MB, or active file at least 7 days old.
@@ -44,8 +44,7 @@ internal static class WPFLog
             if (_initialized) return;
             try
             {
-                string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                string folder = Path.Combine(appData, Program.ApplicationName);
+                string folder = Program.AppLocalAppDataDirectory;
                 Directory.CreateDirectory(folder);
                 _activePath = Path.Combine(folder, ActiveName);
                 _oldPath = Path.Combine(folder, OldName);

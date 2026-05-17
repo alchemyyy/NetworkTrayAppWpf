@@ -18,6 +18,13 @@ internal static class Program
     public static int? WatcherPID { get; private set; }
 
     public const string ApplicationName = "NetworkTrayAppWPF";
+    public const string SharedRootFolderName = "TrayAppWPF";
+
+    public static string LocalAppDataRoot =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), SharedRootFolderName);
+
+    public static string AppLocalAppDataDirectory =>
+        Path.Combine(LocalAppDataRoot, ApplicationName);
 
     /// <summary>
     /// True when this process was started with <c>--uninstall</c>.
@@ -134,10 +141,29 @@ internal static class Program
                 InstallResult result = InstallationService.RunAdminInstallSystem(sourceExe, buildNumber);
                 return result.Success ? 0 : 1;
             }
+            case "sync-startmenu":
+            {
+                // --admin-action sync-startmenu [--remove-scope user|system|store]
+                InstallScope? removingScope = ParseRemoveScopeArg(args);
+                StartMenuShortcut.Sync(removingScope: removingScope, allUsers: true);
+                return 0;
+            }
             default:
                 WPFLog.Log($"Program.RunAdminAction: unknown verb '{verb}'");
                 return 1;
         }
+    }
+
+    private static InstallScope? ParseRemoveScopeArg(string[] args)
+    {
+        if (TryGetArgValue(args, "--remove-scope") is not { } raw) return null;
+        return raw.ToLowerInvariant() switch
+        {
+            "user" or "local" or "localappdata" => InstallScope.LocalAppData,
+            "system" or "programfiles" => InstallScope.ProgramFiles,
+            "store" or "windowsstore" => InstallScope.WindowsStore,
+            _ => null,
+        };
     }
 
     private static int RunUninstall(string[] args, string installDir)

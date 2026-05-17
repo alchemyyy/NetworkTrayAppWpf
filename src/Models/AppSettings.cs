@@ -254,18 +254,15 @@ public class AppSettings
 
     public static string GetDefaultPath()
     {
-        string appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        string appFolder = Path.Combine(appDataFolder, Program.ApplicationName);
+        string appFolder = Program.AppLocalAppDataDirectory;
         Directory.CreateDirectory(appFolder);
         return Path.Combine(appFolder, "settings.xml");
     }
 
-    // The folder that holds settings.xml - same folder as a LocalAppData install of the app.
+    // The folder that holds settings.xml and other per-app data.
     // Used by the uninstaller's "delete settings" branch.
     public static string GetDefaultDirectory() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            Program.ApplicationName);
+        Program.AppLocalAppDataDirectory;
 
     public void Save() => Save(GetDefaultPath());
 
