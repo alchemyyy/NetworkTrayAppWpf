@@ -4,3 +4,4 @@ obj/
 claudeit/
 # Visual Studio XAML designer regenerates these on every preview render.
 *_wpftmp.csproj
+inspect.xml

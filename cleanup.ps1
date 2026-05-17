@@ -2,17 +2,14 @@
 param(
     [Alias('ProjectPath')]
     [string]$TargetPath,
-    [string]$OutputPath = 'inspect.xml',
-    [ValidateSet('INFO', 'HINT', 'SUGGESTION', 'WARNING', 'ERROR')]
-    [string]$Severity = 'SUGGESTION',
-    [string]$SettingsPath,
-    [string]$Include,
-    [string]$Exclude,
-    [string[]]$Project,
-    [string]$InspectCodeExe,
+    [string]$Include = '**/*.cs',
+    [string]$SettingsPath = 'CleanupCode.DotSettings',
+    [string]$Profile = 'CodeStyleIssuesAndLanguageUsage',
+    [string]$EditorConfigOverlayPath,
+    [string]$EditorConfigOverlayDirectory = '.',
+    [string]$CleanupCodeExe,
     [switch]$NoBuild,
-    [switch]$NoInstall,
-    [switch]$NoPause
+    [switch]$NoInstall
 )
 
 Set-StrictMode -Version Latest
@@ -92,22 +89,25 @@ function Get-DefaultTargetPath {
     throw 'No solution or project file found. Pass -TargetPath explicitly.'
 }
 
-function Resolve-InspectRunner {
-    if ($InspectCodeExe) {
-        $resolved = Resolve-Path -LiteralPath $InspectCodeExe
+$targetInfo = Resolve-RepoPathInfo -Path $(if ([string]::IsNullOrWhiteSpace($TargetPath)) { Get-DefaultTargetPath } else { $TargetPath }) -MustExist
+$settingsInfo = Resolve-RepoPathInfo -Path $SettingsPath -MustExist
+
+function Resolve-CleanupRunner {
+    if ($CleanupCodeExe) {
+        $resolved = Resolve-Path -LiteralPath $CleanupCodeExe
         return [pscustomobject]@{
             Exe  = $resolved.Path
             Args = @()
-            Name = 'inspectcode.exe'
+            Name = 'cleanupcode.exe'
         }
     }
 
-    $inspectCode = Get-Command inspectcode.exe -ErrorAction SilentlyContinue
-    if ($inspectCode) {
+    $cleanupCode = Get-Command cleanupcode.exe -ErrorAction SilentlyContinue
+    if ($cleanupCode) {
         return [pscustomobject]@{
-            Exe  = $inspectCode.Source
+            Exe  = $cleanupCode.Source
             Args = @()
-            Name = 'inspectcode.exe'
+            Name = 'cleanupcode.exe'
         }
     }
 
@@ -121,7 +121,7 @@ function Resolve-InspectRunner {
 
     if (-not $jb) {
         if ($NoInstall) {
-            throw 'Could not find inspectcode.exe or jb. Install JetBrains ReSharper Command Line Tools, or rerun without -NoInstall to install JetBrains.ReSharper.GlobalTools.'
+            throw 'Could not find cleanupcode.exe or jb. Install JetBrains ReSharper Command Line Tools, or rerun without -NoInstall to install JetBrains.ReSharper.GlobalTools.'
         }
 
         dotnet tool install -g JetBrains.ReSharper.GlobalTools
@@ -131,72 +131,72 @@ function Resolve-InspectRunner {
 
     return [pscustomobject]@{
         Exe  = $jb.Source
-        Args = @('inspectcode')
-        Name = 'jb inspectcode'
+        Args = @('cleanupcode')
+        Name = 'jb cleanupcode'
     }
 }
 
-$targetInfo = Resolve-RepoPathInfo -Path $(if ([string]::IsNullOrWhiteSpace($TargetPath)) { Get-DefaultTargetPath } else { $TargetPath }) -MustExist
-$outputInfo = Resolve-RepoPathInfo -Path $OutputPath
-$settingsInfo = if ($SettingsPath) { Resolve-RepoPathInfo -Path $SettingsPath -MustExist } else { $null }
-$runner = Resolve-InspectRunner
+$runner = Resolve-CleanupRunner
+$targetPath = $targetInfo.Relative
+$settingsPath = $settingsInfo.Relative
 
+# Use solution mode by default. CleanupCode limits custom profiles in
+# solution-less project mode to reformat stages, which would skip the
+# redundancy/import stages this profile is meant to run.
 $arguments = @(
     $runner.Args
-    '-f=Xml'
-    "--output=$($outputInfo.Relative)"
-    "--severity=$Severity"
+    "--settings=$settingsPath"
+    "--profile=$Profile"
+    '--verbosity=INFO'
     '--no-updates'
 )
 
-if ($settingsInfo) {
-    $arguments += "--settings=$($settingsInfo.Relative)"
-}
-
 if ($Include) {
     $arguments += "--include=$Include"
-}
-
-if ($Exclude) {
-    $arguments += "--exclude=$Exclude"
-}
-
-foreach ($projectFilter in $Project) {
-    $arguments += "--project=$projectFilter"
 }
 
 if ($NoBuild) {
     $arguments += '--no-build'
 }
 
-$arguments += $targetInfo.Relative
+$arguments += $targetPath
 
-Write-Host "Running $($runner.Name) on $($targetInfo.Relative)"
-Write-Host "Output: $($outputInfo.Relative)"
-Write-Host "Severity: $Severity"
-if ($settingsInfo) {
-    Write-Host "Settings: $($settingsInfo.Relative)"
-}
+Write-Host "Running $($runner.Name) on $targetPath"
+Write-Host "Settings: $settingsPath"
+Write-Host "Profile: $Profile"
 if ($Include) {
     Write-Host "Include: $Include"
 }
-if ($Exclude) {
-    Write-Host "Exclude: $Exclude"
-}
-foreach ($projectFilter in $Project) {
-    Write-Host "Project: $projectFilter"
+
+if ($EditorConfigOverlayPath) {
+    Write-Host "EditorConfig overlay: $((Resolve-RepoPathInfo -Path $EditorConfigOverlayPath -MustExist).Relative)"
 }
 
-if (-not $PSCmdlet.ShouldProcess($targetInfo.Relative, "Run $($runner.Name)")) {
+if (-not $PSCmdlet.ShouldProcess($targetPath, "Run $($runner.Name) with '$Profile'")) {
     return
 }
 
-if (Test-Path -LiteralPath $outputInfo.Full -PathType Leaf) {
-    Remove-Item -LiteralPath $outputInfo.Full -Force
-}
-
+$overlayDirectoryInfo = if ($EditorConfigOverlayPath) { Resolve-RepoPathInfo -Path $EditorConfigOverlayDirectory -MustExist } else { $null }
+$overlayDestination = if ($overlayDirectoryInfo) { Join-Path $overlayDirectoryInfo.Full '.editorconfig' } else { $null }
+$overlayBackup = $null
+$overlayApplied = $false
 $pushedLocation = $false
+
 try {
+    if ($EditorConfigOverlayPath) {
+        $overlaySourceInfo = Resolve-RepoPathInfo -Path $EditorConfigOverlayPath -MustExist
+
+        if (-not [System.StringComparer]::OrdinalIgnoreCase.Equals($overlaySourceInfo.Full, $overlayDestination)) {
+            if (Test-Path -LiteralPath $overlayDestination -PathType Leaf) {
+                $overlayBackup = Join-Path $overlayDirectoryInfo.Full ".editorconfig.cleanup-backup.$([guid]::NewGuid().ToString('N'))"
+                Move-Item -LiteralPath $overlayDestination -Destination $overlayBackup
+            }
+
+            Copy-Item -LiteralPath $overlaySourceInfo.Full -Destination $overlayDestination
+            $overlayApplied = $true
+        }
+    }
+
     Push-Location -LiteralPath $root
     $pushedLocation = $true
     & $runner.Exe @arguments
@@ -206,39 +206,18 @@ finally {
     if ($pushedLocation) {
         Pop-Location
     }
+
+    if ($overlayApplied) {
+        if (Test-Path -LiteralPath $overlayDestination -PathType Leaf) {
+            Remove-Item -LiteralPath $overlayDestination -Force
+        }
+
+        if ($overlayBackup -and (Test-Path -LiteralPath $overlayBackup -PathType Leaf)) {
+            Move-Item -LiteralPath $overlayBackup -Destination $overlayDestination
+        }
+    }
 }
 
 if ($exitCode -ne 0) {
-    throw "InspectCode failed with exit code $exitCode."
-}
-
-[xml]$report = Get-Content -LiteralPath $outputInfo.Full
-$types = @{}
-foreach ($type in $report.Report.IssueTypes.IssueType) {
-    $types[$type.Id] = $type
-}
-
-$report.SelectNodes('//Issues/Project/Issue') |
-    ForEach-Object {
-        [pscustomobject]@{
-            Project  = $_.ParentNode.Name
-            Category = $types[$_.TypeId].CategoryId
-            Severity = if ($_.Severity) { $_.Severity } else { $types[$_.TypeId].Severity }
-            TypeId   = $_.TypeId
-            File     = $_.File
-            Line     = $_.Line
-            Message  = $_.Message
-        }
-    } |
-    Sort-Object Category, Severity, TypeId |
-    Group-Object Category |
-    ForEach-Object {
-        "`n=== $($_.Name) ($($_.Count)) ==="
-        $_.Group |
-            Format-Table Severity, Project, TypeId, File, Line, Message |
-            Out-String -Width 32766
-    }
-
-if (-not $NoPause) {
-    Read-Host 'Press Enter to exit'
+    throw "CleanupCode failed with exit code $exitCode."
 }
