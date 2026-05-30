@@ -17,7 +17,7 @@ public static class StartMenuShortcut
         @"AppData\Roaming\Microsoft\Windows\Start Menu\Programs";
 
     private static string LocalAppDataExeRelativePath =>
-        @"AppData\Local\" + Program.SharedRootFolderName + @"\" + InstallationService.InstalledExeFileName;
+        @"AppData\Local\" + Program.SharedRootFolderName + @"\" + InstallationService.InstalledExecutableFileName;
 
     private static string PlainFileName => $"{Program.ApplicationName}.lnk";
     private static string LocalSuffixedFileName => $"{Program.ApplicationName} ({LocalSuffix}).lnk";
@@ -32,13 +32,13 @@ public static class StartMenuShortcut
                 && IsConsideredInstalled(infos, InstallScope.ProgramFiles);
             bool storeInstalled = removingScope != InstallScope.WindowsStore
                 && IsConsideredInstalled(infos, InstallScope.WindowsStore);
-            string systemExe = InstallationService.ProgramFilesInstallExe;
+            string systemExe = InstallationService.ProgramFilesInstallExecutable;
 
             if (!allUsers)
             {
                 bool localInstalled = removingScope != InstallScope.LocalAppData
                     && IsConsideredInstalled(infos, InstallScope.LocalAppData);
-                string localExe = InstallationService.LocalAppDataInstallExe;
+                string localExe = InstallationService.LocalAppDataInstallExecutable;
                 string programsDir = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
                 ApplyProfile(
                     programsDir,

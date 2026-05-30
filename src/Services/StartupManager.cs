@@ -14,8 +14,8 @@ namespace NetworkTrayAppWPF.Services;
 /// (ProgramFiles, then LocalAppData, then the currently running exe) so a portable build only
 /// "wins" the shortcut when no installed copy exists.
 /// On every launch the shortcut is validated against the known install paths
-/// (<see cref="InstallationService.LocalAppDataInstallExe"/>
-/// / <see cref="InstallationService.ProgramFilesInstallExe"/>),
+/// (<see cref="InstallationService.LocalAppDataInstallExecutable"/>
+/// / <see cref="InstallationService.ProgramFilesInstallExecutable"/>),
 /// and a stale target gets repaired to the running install - see <see cref="RepairShortcutIfStale"/>.
 /// </summary>
 public static class StartupManager
@@ -163,8 +163,8 @@ public static class StartupManager
             string? target = TryReadShortcutTarget(lnk);
             if (IsValidInstallationTarget(target)) return;
 
-            string? runningInstallExe = GetRunningInstallExePathOrNull();
-            if (runningInstallExe != null) CreateShortcut(lnk, runningInstallExe);
+            string? runningInstallExecutable = GetRunningInstallExecutablePathOrNull();
+            if (runningInstallExecutable != null) CreateShortcut(lnk, runningInstallExecutable);
         }
         catch (Exception ex)
         {
@@ -180,24 +180,24 @@ public static class StartupManager
         // a stale shortcut left behind pointing at someone's old portable build under Downloads\ shouldn't pass.
         string normalized = PathNormalization.Normalize(targetPath);
         return string.Equals(
-                normalized, PathNormalization.Normalize(InstallationService.LocalAppDataInstallExe),
+                normalized, PathNormalization.Normalize(InstallationService.LocalAppDataInstallExecutable),
                 StringComparison.OrdinalIgnoreCase)
             || string.Equals(
-                normalized, PathNormalization.Normalize(InstallationService.ProgramFilesInstallExe),
+                normalized, PathNormalization.Normalize(InstallationService.ProgramFilesInstallExecutable),
                 StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string? GetRunningInstallExePathOrNull()
+    private static string? GetRunningInstallExecutablePathOrNull()
     {
         try
         {
             InstallationInfo? hit = InstallationService.DetectAll()
                 .FirstOrDefault(i => i is { Status: InstallStatus.CurrentlyRunning, Scope: InstallScope.LocalAppData or InstallScope.ProgramFiles });
-            return hit?.InstallExePath;
+            return hit?.InstallExecutablePath;
         }
         catch (Exception ex)
         {
-            WPFLog.Log($"StartupManager.GetRunningInstallExePathOrNull: {ex.Message}");
+            WPFLog.Log($"StartupManager.GetRunningInstallExecutablePathOrNull: {ex.Message}");
             return null;
         }
     }
@@ -222,12 +222,12 @@ public static class StartupManager
         {
             if (exclude != InstallScope.ProgramFiles)
             {
-                string programFiles = InstallationService.ProgramFilesInstallExe;
+                string programFiles = InstallationService.ProgramFilesInstallExecutable;
                 if (File.Exists(programFiles)) return programFiles;
             }
             if (exclude != InstallScope.LocalAppData)
             {
-                string localAppData = InstallationService.LocalAppDataInstallExe;
+                string localAppData = InstallationService.LocalAppDataInstallExecutable;
                 if (File.Exists(localAppData)) return localAppData;
             }
 
@@ -241,8 +241,8 @@ public static class StartupManager
             if (exclude.HasValue)
             {
                 string excludedExe = exclude.Value == InstallScope.ProgramFiles
-                    ? InstallationService.ProgramFilesInstallExe
-                    : InstallationService.LocalAppDataInstallExe;
+                    ? InstallationService.ProgramFilesInstallExecutable
+                    : InstallationService.LocalAppDataInstallExecutable;
                 if (string.Equals(
                         PathNormalization.Normalize(running),
                         PathNormalization.Normalize(excludedExe),

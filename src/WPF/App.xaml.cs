@@ -13,6 +13,9 @@ using NetworkTrayAppWPF.Services;
 using NetworkTrayAppWPF.Visuals;
 using Point = System.Windows.Point;
 using SettingsThemeMode = NetworkTrayAppWPF.Models.ThemeMode;
+// net10's WinForms ref now ships ContextMenu/MenuItem too; pin the WPF types.
+using ContextMenu = System.Windows.Controls.ContextMenu;
+using MenuItem = System.Windows.Controls.MenuItem;
 
 namespace NetworkTrayAppWPF.WPF;
 

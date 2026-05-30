@@ -29,7 +29,7 @@ public enum InstallStatus
 /// </summary>
 public sealed record InstallationInfo(
     InstallScope Scope,
-    string InstallExePath,
+    string InstallExecutablePath,
     InstallStatus Status,
     int? InstalledVersion);
 
@@ -45,19 +45,19 @@ public sealed record InstallResult(bool Success, string? ErrorMessage = null, bo
 /// </summary>
 public static class InstallationService
 {
-    public static string InstalledExeFileName => Program.ApplicationName + ".exe";
+    public static string InstalledExecutableFileName => Program.ApplicationName + ".exe";
 
     public static string LocalAppDataInstallDir =>
         Program.LocalAppDataRoot;
 
-    public static string LocalAppDataInstallExe =>
-        Path.Combine(LocalAppDataInstallDir, InstalledExeFileName);
+    public static string LocalAppDataInstallExecutable =>
+        Path.Combine(LocalAppDataInstallDir, InstalledExecutableFileName);
 
     public static string ProgramFilesInstallDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Program.SharedRootFolderName);
 
-    public static string ProgramFilesInstallExe =>
-        Path.Combine(ProgramFilesInstallDir, InstalledExeFileName);
+    public static string ProgramFilesInstallExecutable =>
+        Path.Combine(ProgramFilesInstallDir, InstalledExecutableFileName);
 
     public static string WindowsAppsRoot =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "WindowsApps");
@@ -107,10 +107,10 @@ public static class InstallationService
 
         List<InstallationInfo> results =
         [
-            DetectFile(InstallScope.LocalAppData, LocalAppDataInstallExe,
+            DetectFile(InstallScope.LocalAppData, LocalAppDataInstallExecutable,
                 WindowsUninstallRegistry.Scope.CurrentUser, currentPath, currentVersion),
 
-            DetectFile(InstallScope.ProgramFiles, ProgramFilesInstallExe,
+            DetectFile(InstallScope.ProgramFiles, ProgramFilesInstallExecutable,
                 WindowsUninstallRegistry.Scope.LocalMachine, currentPath, currentVersion),
 
             DetectStore(currentPath)
@@ -119,10 +119,10 @@ public static class InstallationService
         return results;
     }
 
-    private static InstallationInfo DetectFile(InstallScope scope, string installExe,
+    private static InstallationInfo DetectFile(InstallScope scope, string installExecutable,
         WindowsUninstallRegistry.Scope regScope, string currentPath, int currentVersion)
     {
-        bool fileExists = File.Exists(installExe);
+        bool fileExists = File.Exists(installExecutable);
 
         // Clean orphan registry entries: if the file is gone, drop any leftover Uninstall key so the
         // entry doesn't haunt Add/Remove Programs.
@@ -133,16 +133,16 @@ public static class InstallationService
             entry = null;
         }
 
-        if (!fileExists) return new InstallationInfo(scope, installExe, InstallStatus.NotInstalled, null);
+        if (!fileExists) return new InstallationInfo(scope, installExecutable, InstallStatus.NotInstalled, null);
 
-        bool running = string.Equals(currentPath, PathNormalization.Normalize(installExe), StringComparison.OrdinalIgnoreCase);
+        bool running = string.Equals(currentPath, PathNormalization.Normalize(installExecutable), StringComparison.OrdinalIgnoreCase);
         if (running)
-            return new InstallationInfo(scope, installExe, InstallStatus.CurrentlyRunning, entry?.DisplayVersion);
+            return new InstallationInfo(scope, installExecutable, InstallStatus.CurrentlyRunning, entry?.DisplayVersion);
 
         int? installed = entry?.DisplayVersion;
         if (installed.HasValue && installed.Value < currentVersion)
-            return new InstallationInfo(scope, installExe, InstallStatus.InstalledOutOfDate, installed);
-        return new InstallationInfo(scope, installExe, InstallStatus.InstalledUpToDate, installed);
+            return new InstallationInfo(scope, installExecutable, InstallStatus.InstalledOutOfDate, installed);
+        return new InstallationInfo(scope, installExecutable, InstallStatus.InstalledUpToDate, installed);
     }
 
     private static InstallationInfo DetectStore(string currentPath)
@@ -166,7 +166,7 @@ public static class InstallationService
         try
         {
             Directory.CreateDirectory(LocalAppDataInstallDir);
-            string dest = LocalAppDataInstallExe;
+            string dest = LocalAppDataInstallExecutable;
             if (string.Equals(PathNormalization.Normalize(source), PathNormalization.Normalize(dest), StringComparison.OrdinalIgnoreCase))
             {
                 // Same file - nothing to copy, just refresh the registry entry below
@@ -213,7 +213,7 @@ public static class InstallationService
         {
             if (!File.Exists(sourceExe)) return new InstallResult(false, $"Source exe not found: {sourceExe}");
             Directory.CreateDirectory(ProgramFilesInstallDir);
-            string dest = ProgramFilesInstallExe;
+            string dest = ProgramFilesInstallExecutable;
             if (!string.Equals(PathNormalization.Normalize(sourceExe), PathNormalization.Normalize(dest), StringComparison.OrdinalIgnoreCase))
                 File.Copy(sourceExe, dest, overwrite: true);
             WindowsUninstallRegistry.Write(WindowsUninstallRegistry.Scope.LocalMachine,
@@ -261,9 +261,9 @@ public static class InstallationService
         // The bat kills any other processes at the install path itself (path-scoped, not name-scoped), so a portable
         // build uninstalling a different installed copy keeps running untouched.
         string runningExe = PathNormalization.Normalize(Environment.ProcessPath);
-        string installExe = PathNormalization.Normalize(Path.Combine(installDir, InstalledExeFileName));
+        string installExecutable = PathNormalization.Normalize(Path.Combine(installDir, InstalledExecutableFileName));
         bool runningFromInstall = !string.IsNullOrEmpty(runningExe) &&
-            string.Equals(runningExe, installExe, StringComparison.OrdinalIgnoreCase);
+            string.Equals(runningExe, installExecutable, StringComparison.OrdinalIgnoreCase);
 
         if (runningFromInstall)
         {

@@ -57,7 +57,7 @@ public static class UninstallScript
     // across TrayAppWPF-derived apps, so uninstall must not wildcard-delete sibling apps.
     private static string[] InstalledAppFileNames =>
     [
-        InstallationService.InstalledExeFileName,
+        InstallationService.InstalledExecutableFileName,
         Program.ApplicationName + ".dll",
         Program.ApplicationName + ".pdb",
         Program.ApplicationName + ".runtimeconfig.json",
@@ -66,14 +66,14 @@ public static class UninstallScript
 
     private static string BuildScript(string installDir, WindowsUninstallRegistry.Scope regScope, bool deleteSettings)
     {
-        string installExe = Path.Combine(installDir, InstallationService.InstalledExeFileName);
+        string installExecutable = Path.Combine(installDir, InstallationService.InstalledExecutableFileName);
         string regKeyFullPath = (regScope == WindowsUninstallRegistry.Scope.LocalMachine ? "HKLM\\" : "HKCU\\")
             + WindowsUninstallRegistry.SubKeyPath;
         string startupLnk = StartupManager.ShortcutPath;
         string settingsDir = AppSettings.GetDefaultDirectory();
 
         // PowerShell single-quoted literal: any embedded ' must be doubled.
-        string installExeForPs = installExe.Replace("'", "''");
+        string installExecutableForPs = installExecutable.Replace("'", "''");
         string startupLnkForPs = startupLnk.Replace("'", "''");
         // Trailing separator pins the StartsWith comparison to whole-segment matches:
         // "C:\Foo\Bar" must not match "C:\Foo\BarBaz\app.exe".
@@ -89,14 +89,14 @@ public static class UninstallScript
         if (regScope == WindowsUninstallRegistry.Scope.LocalMachine)
         {
             sb.AppendLine("rem Reconcile Start Menu shortcuts across every user profile from an already-elevated context.");
-            sb.AppendLine($"start \"\" /wait \"{EscBat(installExe)}\" --admin-action sync-startmenu --remove-scope system");
+            sb.AppendLine($"start \"\" /wait \"{EscBat(installExecutable)}\" --admin-action sync-startmenu --remove-scope system");
             sb.AppendLine();
         }
         sb.AppendLine("rem Kill processes whose executable path equals the install exe (and only those -");
         sb.AppendLine("rem a portable copy of the app running from elsewhere is untouched).");
         sb.AppendLine("rem Loops with a brief sleep so the watcher/monitored restart race resolves.");
         sb.AppendLine("powershell -NoProfile -ExecutionPolicy Bypass -Command "
-            + "\"$p = '" + installExeForPs + "'; "
+            + "\"$p = '" + installExecutableForPs + "'; "
             + "for ($i=0; $i -lt 20; $i++) { "
             + "$procs = Get-Process -Name " + Program.ApplicationName + " -ErrorAction SilentlyContinue "
             + "| Where-Object { try { $_.Path -ieq $p } catch { $false } }; "
@@ -107,7 +107,7 @@ public static class UninstallScript
         sb.AppendLine("rem Shared install root: remove only this app's files and leave sibling apps alone.");
         foreach (string fileName in InstalledAppFileNames)
             sb.AppendLine($"del /f /q \"{EscBat(Path.Combine(installDir, fileName))}\" >nul 2>&1");
-        sb.AppendLine($"if exist \"{EscBat(installExe)}\" set ERR=1");
+        sb.AppendLine($"if exist \"{EscBat(installExecutable)}\" set ERR=1");
         sb.AppendLine("rem Remove the shared install dir only if it is empty after this app's files are gone.");
         sb.AppendLine($"rmdir \"{EscBat(installDir)}\" >nul 2>&1");
         sb.AppendLine();

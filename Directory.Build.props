@@ -7,6 +7,11 @@
     <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\</BaseIntermediateOutputPath>
 
     <BuildNumberFile>$(MSBuildThisFileDirectory)buildnumber.txt</BuildNumberFile>
+
+    <!-- x64-only: WPF + WinForms + Win32 interop is x64-bound.
+         Platforms drives the VS/Rider platform picker; PlatformTarget drives the compiler. -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <!-- Bake the build number into the assembly at compile time as a

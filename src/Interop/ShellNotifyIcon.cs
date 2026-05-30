@@ -6,6 +6,8 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using NetworkTrayAppWPF.Models;
 using Point = System.Windows.Point;
+// net10's WinForms ref now ships ContextMenu too; pin the WPF type.
+using ContextMenu = System.Windows.Controls.ContextMenu;
 
 namespace NetworkTrayAppWPF.Interop;
 
